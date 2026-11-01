@@ -228,6 +228,16 @@ app.post('/api/student/login', (req, res) => {
   }
 
   const config = readJSON(CONFIG_FILE, {});
+
+  // 3. Teacher Master Control: Students cannot log in if teacher has not started the exam
+  if (config.isExamLive === false) {
+    return res.status(403).json({
+      success: false,
+      status: 'EXAM_NOT_STARTED',
+      message: 'The examination has not been started by the instructor yet. Please wait until your teacher starts the exam.'
+    });
+  }
+
   const questions = readJSON(QUESTIONS_FILE, []);
   const durationMinutes = Number(config.durationMinutes) || 15;
   const totalSeconds = durationMinutes * 60;
@@ -361,7 +371,10 @@ app.post('/api/student/violation', (req, res) => {
 
   if (count >= maxViolations) {
     student.status = 'LOCKED';
-    student.lockReason = `Exceeded allowed security warnings (${count}/${maxViolations}): Developer Tools / Tampering detected`;
+    const isTab = (type || '').includes('TAB') || (type || '').includes('BLUR');
+    student.lockReason = isTab
+      ? `Exceeded allowed security warnings (${count}/${maxViolations}): Tab switching detected`
+      : `Exceeded allowed security warnings (${count}/${maxViolations}): Developer Tools / Tampering detected`;
     student.lockedAt = new Date().toISOString();
     isLocked = true;
   }
@@ -536,10 +549,29 @@ app.get('/api/teacher/students', checkTeacherAuth, (req, res) => {
   const submitted = students.filter(s => s.status === 'SUBMITTED').length;
   const notStarted = students.filter(s => s.status === 'NOT_STARTED').length;
 
+  const config = readJSON(CONFIG_FILE, {});
   res.json({
     success: true,
+    isExamLive: config.isExamLive === true,
     summary: { total, inProgress, locked, submitted, notStarted, totalQuestions },
     students: progressList
+  });
+});
+
+// Teacher: Toggle Exam Live Master Switch
+app.post('/api/teacher/exam/toggle', checkTeacherAuth, (req, res) => {
+  const { isExamLive } = req.body;
+  const config = readJSON(CONFIG_FILE, {});
+  config.isExamLive = Boolean(isExamLive);
+  writeJSON(CONFIG_FILE, config);
+
+  console.log(`[MASTER SWITCH] Teacher set exam live status to: ${config.isExamLive ? 'LIVE' : 'CLOSED'}`);
+  res.json({
+    success: true,
+    isExamLive: config.isExamLive,
+    message: config.isExamLive
+      ? 'Examination is now LIVE! Students can now log in.'
+      : 'Examination is now CLOSED! Student logins are blocked.'
   });
 });
 
@@ -766,6 +798,7 @@ app.get('/api/quiz/info', (req, res) => {
   const questions = readJSON(QUESTIONS_FILE, []);
   res.json({
     success: true,
+    isExamLive: config.isExamLive === true,
     examTitle: config.examTitle || 'Digital Forensics Assessment',
     examCode: config.examCode || 'DFIR-BENCHMARK',
     organization: config.organization || 'Digital Forensics Laboratory',

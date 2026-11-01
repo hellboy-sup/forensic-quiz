@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lockReasonText = document.getElementById('lockReasonText');
 
   const securityWarningModal = document.getElementById('securityWarningModal');
+  const warningIcon = document.getElementById('warningIcon');
+  const warningTitleText = document.getElementById('warningTitleText');
   const warningCountBadge = document.getElementById('warningCountBadge');
   const warningDetailsText = document.getElementById('warningDetailsText');
   const warningRemainingText = document.getElementById('warningRemainingText');
@@ -86,21 +88,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (v.count > 0) violationBadgeEl.className = 'badge badge-red';
       }
 
-      // If under limit, display the warning popup
+      // Check violation type: Tab Switch vs DevTools
+      const isTabSwitch = (v.type || '').includes('TAB') || (v.type || '').includes('BLUR');
+
+      // If under limit, display the appropriate warning popup
       if (v.count < v.max && !v.locked) {
         if (securityWarningModal) {
+          if (warningIcon) warningIcon.textContent = isTabSwitch ? '👁️' : '🚨';
+          if (warningTitleText) {
+            warningTitleText.textContent = isTabSwitch 
+              ? 'TAB SWITCH DETECTED' 
+              : 'DEVELOPER TOOLS / INSPECT DETECTED';
+          }
           if (warningCountBadge) warningCountBadge.textContent = `WARNING ${v.count} OF ${v.max}`;
-          if (warningDetailsText) warningDetailsText.textContent = v.details || 'Developer Tools or Inspect attempt detected.';
+          if (warningDetailsText) {
+            warningDetailsText.textContent = isTabSwitch
+              ? 'Switching browser tabs or minimizing the window is prohibited during the examination.'
+              : (v.details || 'Opening Developer Tools, Inspect Element, or page source is prohibited.');
+          }
           if (warningRemainingText) {
             const remaining = v.max - v.count;
-            warningRemainingText.textContent = `⚠️ NOTICE: You have ${remaining} warning${remaining > 1 ? 's' : ''} remaining. On warning 3, your exam will be LOCKED.`;
+            warningRemainingText.textContent = isTabSwitch
+              ? `⚠️ NOTICE: You have ${remaining} warning${remaining > 1 ? 's' : ''} remaining. On 3 tab switches, your exam will be LOCKED.`
+              : `⚠️ NOTICE: You have ${remaining} warning${remaining > 1 ? 's' : ''} remaining. On 3 warnings, your exam will be LOCKED.`;
           }
           securityWarningModal.classList.add('active');
         }
       } else {
         // Warning 3 or locked: Close warning modal and immediately display full lock screen
         if (securityWarningModal) securityWarningModal.classList.remove('active');
-        showLockScreen(v.lockReason || `Exceeded permitted security warnings (${v.count}/${v.max}): Developer Tools access detected.`);
+        const lockMsg = isTabSwitch 
+          ? `Exceeded permitted security warnings (${v.count}/${v.max}): 3 Tab switches / window minimizes detected.`
+          : (v.lockReason || `Exceeded permitted security warnings (${v.count}/${v.max}): Developer Tools access detected.`);
+        showLockScreen(lockMsg);
       }
     },
     onLocked: (reason) => {

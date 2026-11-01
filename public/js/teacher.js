@@ -48,6 +48,42 @@ document.addEventListener('DOMContentLoaded', () => {
   const cfgPasscode = document.getElementById('cfgPasscode');
   const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 
+  // Master Exam Switch Elements
+  const masterStatusBadge = document.getElementById('masterStatusBadge');
+  const masterStatusDesc = document.getElementById('masterStatusDesc');
+  const toggleExamLiveBtn = document.getElementById('toggleExamLiveBtn');
+  let isCurrentExamLive = false;
+
+  if (toggleExamLiveBtn) {
+    toggleExamLiveBtn.addEventListener('click', async () => {
+      const targetState = !isCurrentExamLive;
+      const confirmMsg = targetState
+        ? 'Are you sure you want to START the examination? Students will now be allowed to log in and take their test.'
+        : 'Are you sure you want to CLOSE the examination? Student logins will be blocked.';
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        const res = await fetch('/api/teacher/exam/toggle', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-teacher-token': teacherToken
+          },
+          body: JSON.stringify({ isExamLive: targetState })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message);
+          fetchLiveProgress();
+        } else {
+          alert(`Error: ${data.message}`);
+        }
+      } catch (err) {
+        alert('Failed to toggle examination status.');
+      }
+    });
+  }
+
   // Check saved session
   if (teacherToken) {
     verifySession();
@@ -163,7 +199,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (!data.success) return;
 
-      const { summary, students } = data;
+      const { summary, students, isExamLive } = data;
+      isCurrentExamLive = Boolean(isExamLive);
+
+      // Update Master Switch UI
+      if (masterStatusBadge && toggleExamLiveBtn) {
+        if (isCurrentExamLive) {
+          masterStatusBadge.className = 'badge badge-green';
+          masterStatusBadge.innerHTML = '🟢 EXAM IS LIVE (LOGINS ALLOWED)';
+          if (masterStatusDesc) masterStatusDesc.textContent = 'Students can log in and take their assessment.';
+          toggleExamLiveBtn.className = 'btn btn-danger';
+          toggleExamLiveBtn.innerHTML = '⏹️ END / CLOSE EXAMINATION';
+        } else {
+          masterStatusBadge.className = 'badge badge-amber';
+          masterStatusBadge.innerHTML = '🔴 EXAM CLOSED (LOGINS BLOCKED)';
+          if (masterStatusDesc) masterStatusDesc.textContent = 'Students cannot log in until you click Start Exam.';
+          toggleExamLiveBtn.className = 'btn btn-success';
+          toggleExamLiveBtn.innerHTML = '▶️ START EXAMINATION (ALLOW LOGINS)';
+        }
+      }
 
       // Update KPIs
       kpiTotalStudents.textContent = summary.total;

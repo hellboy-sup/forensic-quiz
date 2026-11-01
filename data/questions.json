@@ -1,133 +1,627 @@
 [
   {
-    "id": "DF-101",
-    "category": "Disk Forensics & Integrity",
-    "question": "During evidence acquisition of a suspect SATA drive, which mechanism ensures that the media remains uncorrupted and forensically sound?",
+    "id": "HM-101",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "The fundamental principle of handwriting identification is that:",
     "options": [
-      { "id": "A", "text": "Executing an unbuffered dd copy directly in single-user mode" },
-      { "id": "B", "text": "Employing a hardware or firmware-based write-blocker" },
-      { "id": "C", "text": "Remounting the filesystem as read-only via standard OS mount" },
-      { "id": "D", "text": "Applying NTFS journaling rollback to stabilize clusters" }
+      {
+        "id": "A",
+        "text": "Handwriting depends only on the pen used"
+      },
+      {
+        "id": "B",
+        "text": "Only trained writers have identifiable handwriting"
+      },
+      {
+        "id": "C",
+        "text": "Every person writes exactly the same way every time"
+      },
+      {
+        "id": "D",
+        "text": "No two persons write exactly alike, and one person never writes exactly alike twice (natural variation)"
+      }
     ],
-    "correctOption": "B",
-    "explanation": "A write blocker guarantees that the storage controller blocks any write or metadata update commands, preserving the bitstream integrity of the original evidence."
+    "correctOption": "D",
+    "explanation": "Handwriting identification relies on individual characteristics and natural variation. A person's writing varies naturally, while the combination of habitual features can help distinguish one writer from another."
   },
   {
-    "id": "DF-102",
-    "category": "File System Forensics",
-    "question": "In NTFS, what is the significance of the $MFT (Master File Table) record size and resident files?",
+    "id": "HM-102",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Match the following: List I: A. Model signature, B. Patching, C. Retracing, D. Pen lift. List II: i. Any stroke that goes back over the same writing stroke. ii. An interruption in a stroke caused by removing the writing instrument from the paper. iii. A genuine signature that has been used to prepare an imitated or traced forgery. iv. Retouching and going back over a defective portion of a writing stroke. Choose the correct option.",
     "options": [
-      { "id": "A", "text": "Each record is 4096 bytes; files smaller than 4KB are automatically encrypted" },
-      { "id": "B", "text": "Each record is 1024 bytes; small files under ~700 bytes can live directly within the MFT record itself" },
-      { "id": "C", "text": "Each record is 512 bytes; resident files cannot have alternate data streams ($DATA)" },
-      { "id": "D", "text": "Each record is variable; resident files are stored only in unallocated cluster space" }
+      {
+        "id": "A",
+        "text": "A-iv, B-ii, C-iii, D-i"
+      },
+      {
+        "id": "B",
+        "text": "A-ii, B-iii, C-i, D-iv"
+      },
+      {
+        "id": "C",
+        "text": "A-i, B-iv, C-ii, D-iii"
+      },
+      {
+        "id": "D",
+        "text": "A-iii, B-iv, C-i, D-ii"
+      }
     ],
-    "correctOption": "B",
-    "explanation": "NTFS MFT records are typically 1024 bytes. When file content fits within the standard record along with attributes (resident file, usually < 700 bytes), no cluster outside the MFT is allocated."
+    "correctOption": "D",
+    "explanation": "A model signature serves as a reference for imitation; patching corrects defective strokes; retracing involves going back over an existing stroke; and a pen lift interrupts a stroke by removing the pen from the paper."
   },
   {
-    "id": "DF-103",
-    "category": "Volatile Memory (RAM)",
-    "question": "Which volatile artifact is commonly parsed to discover injected DLLs, unlinked VAD trees, and hollowed processes in a Windows memory dump?",
+    "id": "HM-103",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Which of the following is an individual characteristic of handwriting?",
     "options": [
-      { "id": "A", "text": "Shimcache / AppCompatCache" },
-      { "id": "B", "text": "Virtual Address Descriptors (VAD) and malfind heuristics" },
-      { "id": "C", "text": "Amcache.hve transaction logs" },
-      { "id": "D", "text": "Prefetch file hash headers" }
+      {
+        "id": "A",
+        "text": "Writing in the English script"
+      },
+      {
+        "id": "B",
+        "text": "Writing on ruled paper"
+      },
+      {
+        "id": "C",
+        "text": "Use of a ballpoint pen"
+      },
+      {
+        "id": "D",
+        "text": "A peculiar, habitual way of forming the letter 'd'"
+      }
     ],
-    "correctOption": "B",
-    "explanation": "The Virtual Address Descriptor (VAD) tree records memory allocations. Tools like Volatility parse VAD nodes with PAGE_EXECUTE_READWRITE permissions to detect code injection and process hollowing."
+    "correctOption": "D",
+    "explanation": "A distinctive, habitual letter formation can be an individual characteristic. Script type, paper type, and writing instrument are general features shared by many writers."
   },
   {
-    "id": "DF-104",
-    "category": "Anti-Forensics & Timestamps",
-    "question": "What artifact allows an investigator to detect 'Timestomping' on an NTFS partition?",
+    "id": "HM-104",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Writings made by a person in the ordinary course of business or daily life, at or near the time of the disputed document, are called:",
     "options": [
-      { "id": "A", "text": "Comparing $STANDARD_INFORMATION timestamps against $FILE_NAME timestamps" },
-      { "id": "B", "text": "Checking the hardware BIOS real-time clock battery log" },
-      { "id": "C", "text": "Reviewing the Windows Update orchestrator event 1074" },
-      { "id": "D", "text": "Verifying the volume GUID in the BCD store" }
-    ],
-    "correctOption": "A",
-    "explanation": "Timestomping utilities commonly alter the easily accessible $STANDARD_INFORMATION attribute timestamps ($SI), but frequently fail to modify the corresponding $FILE_NAME attribute ($FN) timestamps, exposing the discrepancy."
-  },
-  {
-    "id": "DF-105",
-    "category": "Network & Protocol Analysis",
-    "question": "An attacker used DNS tunneling for data exfiltration. Which metric in DNS query logs most strongly indicates active tunneling?",
-    "options": [
-      { "id": "A", "text": "Frequent standard PTR queries for RFC 1918 private addresses" },
-      { "id": "B", "text": "Abnormally high entropy and length in TXT/A subdomains queries sent to a single authoritative name server" },
-      { "id": "C", "text": "High volumes of DNS reply packets returning NXDOMAIN responses" },
-      { "id": "D", "text": "Standard DNSSEC RRSET verification timeouts on TCP port 53" }
-    ],
-    "correctOption": "B",
-    "explanation": "DNS tunneling encodes binary/text payloads into high-entropy, long subdomain strings (e.g., base32/hex chunks) queried against attacker-controlled name servers."
-  },
-  {
-    "id": "DF-106",
-    "category": "Registry Forensics",
-    "question": "Which registry key tracks recently executed GUI applications along with their run counts and last execution timestamps, encoded via ROT13?",
-    "options": [
-      { "id": "A", "text": "UserAssist (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\UserAssist)" },
-      { "id": "B", "text": "RunMRU (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU)" },
-      { "id": "C", "text": "AppPaths (HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths)" },
-      { "id": "D", "text": "ShellFolders (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders)" }
-    ],
-    "correctOption": "A",
-    "explanation": "UserAssist subkeys store ROT13-encoded values recording executable names, execution count, and the 64-bit FILETIME of last launch."
-  },
-  {
-    "id": "DF-107",
-    "category": "Incident Response & Triage",
-    "question": "What is the primary forensic value of the Windows Prefetch directory (C:\\Windows\\Prefetch)?",
-    "options": [
-      { "id": "A", "text": "Proves an application was executed, with execution timestamps, run count, and referenced file/directory handles" },
-      { "id": "B", "text": "Stores full decrypted copies of all clipboard buffers at time of crash" },
-      { "id": "C", "text": "Holds real-time network sockets opened by each process during boot" },
-      { "id": "D", "text": "Contains SHA-256 signatures validated against Microsoft SmartScreen" }
-    ],
-    "correctOption": "A",
-    "explanation": "Prefetch files (.pf) are created by the Cache Manager to speed up app loading. Forensically, they confirm execution, last run times, run count, and file dependencies accessed in the first 10 seconds of launch."
-  },
-  {
-    "id": "DF-108",
-    "category": "Chain of Custody & Hash Integrity",
-    "question": "If an investigator calculates an MD5 hash and a SHA-256 hash of an E01 image and compares it to the original physical drive acquisition log:",
-    "options": [
-      { "id": "A", "text": "The E01 file hash will match the physical drive hash exactly byte-for-byte" },
-      { "id": "B", "text": "The internal stored verification hash inside the E01 metadata must match the acquisition hash, even if the raw E01 container hash differs" },
-      { "id": "C", "text": "E01 files do not support cryptographic hashing, requiring raw DD format" },
-      { "id": "D", "text": "Any difference in hashing algorithm automatically invalidates evidence under Daubert standards" }
-    ],
-    "correctOption": "B",
-    "explanation": "Expert Witness Format (E01) encapsulates metadata, compression, and header information. The hash of the .E01 container file differs from the raw drive, but the embedded evidence hash recorded in the E01 metadata matches the original raw drive acquisition."
-  },
-  {
-    "id": "DF-109",
-    "category": "File Headers & Magic Bytes",
-    "question": "An analyst inspects an artifact with extension '.jpg'. The first 4 bytes are '4D 5A 90 00'. What does this reveal?",
-    "options": [
-      { "id": "A", "text": "The file is a corrupted JFIF/JPEG image missing its SOI marker (FF D8)" },
-      { "id": "B", "text": "The file is a disguised Portable Executable (PE / EXE / DLL) masquerading as an image" },
-      { "id": "C", "text": "The file is an encrypted BitLocker recovery volume header" },
-      { "id": "D", "text": "The file is a standard PKZIP archive container" }
-    ],
-    "correctOption": "B",
-    "explanation": "4D 5A ('MZ' - Mark Zbikowski) is the unmistakable DOS MZ header for Windows PE binaries (executables and DLLs), proving the file is an executable disguised with a .jpg extension."
-  },
-  {
-    "id": "DF-110",
-    "category": "Log Analysis & Event IDs",
-    "question": "In the Windows Security Event Log, which Event ID indicates that a new process has been created (crucial for tracking process execution chains)?",
-    "options": [
-      { "id": "A", "text": "Event ID 4624" },
-      { "id": "B", "text": "Event ID 4672" },
-      { "id": "C", "text": "Event ID 4688" },
-      { "id": "D", "text": "Event ID 1102" }
+      {
+        "id": "A",
+        "text": "Disguised writings"
+      },
+      {
+        "id": "B",
+        "text": "Requested specimen writings"
+      },
+      {
+        "id": "C",
+        "text": "Contemporaneous writings"
+      },
+      {
+        "id": "D",
+        "text": "Accidental writings"
+      }
     ],
     "correctOption": "C",
-    "explanation": "Event ID 4688 logs process creation (including parent process ID and command-line arguments when command line auditing is enabled). 4624 is logon, 4672 is special privileges assigned, and 1102 is audit log cleared."
+    "explanation": "Contemporaneous writings are naturally produced documents created around the same period as the questioned document and can provide useful comparison material."
+  },
+  {
+    "id": "HM-105",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Shading in handwriting is mainly produced by:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Lifting the pen from the paper"
+      },
+      {
+        "id": "B",
+        "text": "Writing at high speed only"
+      },
+      {
+        "id": "C",
+        "text": "Increased pen pressure, especially on downstrokes, widening the stroke"
+      },
+      {
+        "id": "D",
+        "text": "Ink fading with age"
+      }
+    ],
+    "correctOption": "C",
+    "explanation": "With flexible writing instruments, increased pressure can widen strokes and produce shading, particularly on downstrokes."
+  },
+  {
+    "id": "HM-106",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "A 'hiatus' in handwriting is:",
+    "options": [
+      {
+        "id": "A",
+        "text": "A tremor in the line"
+      },
+      {
+        "id": "B",
+        "text": "A change of slant within a word"
+      },
+      {
+        "id": "C",
+        "text": "A blot of ink where the pen stopped"
+      },
+      {
+        "id": "D",
+        "text": "A gap in a stroke, or between parts of a letter that are normally joined"
+      }
+    ],
+    "correctOption": "D",
+    "explanation": "A hiatus is a discontinuity or gap in a stroke or junction that would normally be continuous."
+  },
+  {
+    "id": "HM-107",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Which feature indicates a smooth, fluent and natural writing movement?",
+    "options": [
+      {
+        "id": "A",
+        "text": "Patching and retouching of strokes"
+      },
+      {
+        "id": "B",
+        "text": "Tremors throughout the stroke"
+      },
+      {
+        "id": "C",
+        "text": "Blunt starts and ends to every stroke"
+      },
+      {
+        "id": "D",
+        "text": "Continuous, tremor-free line with good ink flow"
+      }
+    ],
+    "correctOption": "D",
+    "explanation": "Natural writing commonly exhibits fluent movement, continuity, and consistent line quality, although these features must be evaluated alongside other characteristics."
+  },
+  {
+    "id": "HM-108",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Frequent pen lifts at unusual points in a signature most likely suggest:",
+    "options": [
+      {
+        "id": "A",
+        "text": "A fast, skilled and habitual signature"
+      },
+      {
+        "id": "B",
+        "text": "Slow, careful drawing, as in a possible simulation"
+      },
+      {
+        "id": "C",
+        "text": "A left-handed writer"
+      },
+      {
+        "id": "D",
+        "text": "A very smooth rhythm"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Unusual pen lifts can indicate interrupted movement and deliberate drawing, which may occur during signature simulation. The finding should be assessed with other evidence."
+  },
+  {
+    "id": "HM-109",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Which is a typical effect of old age on handwriting?",
+    "options": [
+      {
+        "id": "A",
+        "text": "Better alignment and uniform pressure"
+      },
+      {
+        "id": "B",
+        "text": "Greater speed and smoother rhythm"
+      },
+      {
+        "id": "C",
+        "text": "No change at all in line quality"
+      },
+      {
+        "id": "D",
+        "text": "Tremor, reduced speed and weakened pen control"
+      }
+    ],
+    "correctOption": "D",
+    "explanation": "Age-related changes may include tremor, slower movement, and reduced motor control. These effects vary among individuals and cannot independently establish a writer's age."
+  },
+  {
+    "id": "HM-110",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Writing under the influence of alcohol commonly shows:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Improved alignment and precision"
+      },
+      {
+        "id": "B",
+        "text": "Loss of coordination, irregular alignment, and uncertain or tremulous line quality"
+      },
+      {
+        "id": "C",
+        "text": "A complete change of letter forms"
+      },
+      {
+        "id": "D",
+        "text": "Only a change in the ink colour"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Alcohol can impair coordination and motor control, potentially affecting alignment, rhythm, and line quality without necessarily changing all letter forms."
+  },
+  {
+    "id": "HM-111",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Consider the statements: I. Handwriting is a learned, largely unconscious neuromuscular habit. II. Class (general) characteristics alone are sufficient to individualize a writer. III. Individuality arises from the combination of many characteristics, not from a single feature. Which is correct?",
+    "options": [
+      {
+        "id": "A",
+        "text": "I and II only"
+      },
+      {
+        "id": "B",
+        "text": "I, II and III"
+      },
+      {
+        "id": "C",
+        "text": "I and III only"
+      },
+      {
+        "id": "D",
+        "text": "II and III only"
+      }
+    ],
+    "correctOption": "C",
+    "explanation": "Handwriting is a learned motor habit, and writer differentiation depends on evaluating a combination of features. General class characteristics alone are insufficient to individualize a writer."
+  },
+  {
+    "id": "HM-112",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Match the term (List I) with its meaning (List II): List I: A. Pen pause; B. Hiatus; C. Pen lift; D. Pen position. List II: (i) Angle of the nib to the paper and the line of writing, affecting stroke width and shading; (ii) Temporary stop with the pen on paper, often leaving an ink dot or blob; (iii) A gap in a stroke or junction that is normally continuous; (iv) Complete removal of the pen from the paper between strokes. Choose the correct answer.",
+    "options": [
+      {
+        "id": "A",
+        "text": "A-iii, B-ii, C-iv, D-i"
+      },
+      {
+        "id": "B",
+        "text": "A-ii, B-iii, C-iv, D-i"
+      },
+      {
+        "id": "C",
+        "text": "A-iv, B-iii, C-ii, D-i"
+      },
+      {
+        "id": "D",
+        "text": "A-ii, B-i, C-iii, D-iv"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "A pen pause is a temporary stop with the pen touching the paper; a hiatus is a gap in a normally continuous stroke; a pen lift removes the pen from the paper; and pen position concerns the nib's orientation."
+  },
+  {
+    "id": "HM-113",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Assertion (A): A slowly drawn simulated signature commonly shows poor rhythm, tremor and blunt stroke ends. Reason (R): Simulation requires conscious attention to form, which interrupts the automatic movement of natural writing.",
+    "options": [
+      {
+        "id": "A",
+        "text": "A is false, but R is true"
+      },
+      {
+        "id": "B",
+        "text": "Both A and R are true, but R is not the correct explanation of A"
+      },
+      {
+        "id": "C",
+        "text": "Both A and R are true, and R is the correct explanation of A"
+      },
+      {
+        "id": "D",
+        "text": "A is true, but R is false"
+      }
+    ],
+    "correctOption": "C",
+    "explanation": "Conscious efforts to imitate another person's signature can disrupt natural motor fluency, producing tremor, poor rhythm, and blunt stroke endings."
+  },
+  {
+    "id": "HM-114",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Regarding the effect of emotion and writing posture, consider: 1. Emotional disturbance can alter pressure, speed, size and alignment. 2. Awkward posture or an unstable writing surface can cause irregular line quality and alignment. 3. These influences usually change the basic construction of letters completely. 4. Such variations should be judged against standards written under comparable conditions. Which are correct?",
+    "options": [
+      {
+        "id": "A",
+        "text": "1, 3 and 4 only"
+      },
+      {
+        "id": "B",
+        "text": "1, 2 and 3 only"
+      },
+      {
+        "id": "C",
+        "text": "2, 3 and 4 only"
+      },
+      {
+        "id": "D",
+        "text": "1, 2 and 4 only"
+      }
+    ],
+    "correctOption": "D",
+    "explanation": "Emotional state and writing conditions can affect handwriting characteristics. Such variations should be evaluated using comparable standards, as they do not usually replace the writer's fundamental letter construction completely."
+  },
+  {
+    "id": "HM-115",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "A person with Micrographia disease typically shows which handwriting changes?",
+    "options": [
+      {
+        "id": "A",
+        "text": "Small, cramped writing with tremor"
+      },
+      {
+        "id": "B",
+        "text": "Perfect straight alignment"
+      },
+      {
+        "id": "C",
+        "text": "A switch from right slant to left slant"
+      },
+      {
+        "id": "D",
+        "text": "Progressively enlarged, bold writing"
+      }
+    ],
+    "correctOption": "A",
+    "explanation": "Micrographia refers to abnormally small handwriting, often associated with Parkinson's disease and other neurological conditions. Tremor may coexist but is not required in every case."
+  },
+  {
+    "id": "HM-116",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Which is the correct procedure for obtaining requested handwriting specimens?",
+    "options": [
+      {
+        "id": "A",
+        "text": "Let the writer choose any text and any speed"
+      },
+      {
+        "id": "B",
+        "text": "Dictate the text without giving spelling or layout hints, take multiple repetitions, and remove each sheet after it is written"
+      },
+      {
+        "id": "C",
+        "text": "Show the writer the disputed document so they can copy it"
+      },
+      {
+        "id": "D",
+        "text": "Take a single specimen in one attempt"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Multiple dictated specimens help capture natural variation while reducing the opportunity to copy the questioned writing. Sheets should be collected individually, and the examiner should avoid suggesting spelling or layout."
+  },
+  {
+    "id": "HM-117",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "When a person whose mother tongue uses a different script writes English, the writing commonly shows:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Complete absence of individual characteristics"
+      },
+      {
+        "id": "B",
+        "text": "Perfect fluency and no hesitation"
+      },
+      {
+        "id": "C",
+        "text": "Hesitation, poorer skill and carry-over of native-script habits"
+      },
+      {
+        "id": "D",
+        "text": "Identical writing to a native English writer"
+      }
+    ],
+    "correctOption": "C",
+    "explanation": "A writer less familiar with English script may exhibit hesitation, reduced fluency, or transfer of letter-formation habits from their familiar script. Individual characteristics may still be present."
+  },
+  {
+    "id": "HM-118",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Regarding estimation of speed in handwriting, consider: 1. Speed is among the most difficult features to simulate convincingly. 2. A slow, drawn forgery usually lacks the signs of fluent speed. 3. Fast writing tends to show simplified forms, tapering terminals and fewer pen lifts. 4. Speed is best judged from a single isolated letter. Which are correct?",
+    "options": [
+      {
+        "id": "A",
+        "text": "2, 3 and 4 only"
+      },
+      {
+        "id": "B",
+        "text": "1, 2 and 3 only"
+      },
+      {
+        "id": "C",
+        "text": "1 and 2 only"
+      },
+      {
+        "id": "D",
+        "text": "1, 2, 3 and 4"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Writing speed is difficult to imitate because fluent writing shows coordinated movement and characteristic simplifications. Speed should be assessed across connected writing rather than from a single isolated letter."
+  },
+  {
+    "id": "HM-119",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "In handwriting comparison, the crossing in 't' and the dots in 'i' and 'j' are known as:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Connective signs"
+      },
+      {
+        "id": "B",
+        "text": "Diacritic signs"
+      },
+      {
+        "id": "C",
+        "text": "Loop signs"
+      },
+      {
+        "id": "D",
+        "text": "Shoulder signs"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Diacritic signs include marks such as the dot over 'i' or 'j' and the crossbar of 't'. Their placement, form, and execution can assist handwriting comparison."
+  },
+  {
+    "id": "HM-120",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Which of the following is depicted by the master pattern of a person's handwriting?",
+    "options": [
+      {
+        "id": "A",
+        "text": "Range of natural variations in the writing"
+      },
+      {
+        "id": "B",
+        "text": "Copy book form of the writing"
+      },
+      {
+        "id": "C",
+        "text": "Amount of tremors"
+      },
+      {
+        "id": "D",
+        "text": "Forgery in the writing"
+      }
+    ],
+    "correctOption": "A",
+    "explanation": "The master pattern represents the writer's habitual writing characteristics and their range of natural variation, rather than a single ideal or copybook form."
+  },
+  {
+    "id": "HM-121",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Which of the following can be said as interlineation?",
+    "options": [
+      {
+        "id": "A",
+        "text": "Writing between two words"
+      },
+      {
+        "id": "B",
+        "text": "Writing between two letters"
+      },
+      {
+        "id": "C",
+        "text": "Writing between two lines"
+      },
+      {
+        "id": "D",
+        "text": "Writing between two paragraphs"
+      }
+    ],
+    "correctOption": "C",
+    "explanation": "Interlineation is writing inserted between existing lines of text, commonly to add or amend information in a document."
+  },
+  {
+    "id": "HM-122",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "The handwriting written with connected strokes is known as:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Lettered writing"
+      },
+      {
+        "id": "B",
+        "text": "Cursive writing"
+      },
+      {
+        "id": "C",
+        "text": "Disconnected writing"
+      },
+      {
+        "id": "D",
+        "text": "Graphic writing"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Cursive writing is a style in which letters within words are generally connected by flowing strokes."
+  },
+  {
+    "id": "HM-123",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "Graphology can be defined as examination of handwriting for the purpose of determining:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Sex of the writer"
+      },
+      {
+        "id": "B",
+        "text": "Stature of the writer"
+      },
+      {
+        "id": "C",
+        "text": "Age of the writer"
+      },
+      {
+        "id": "D",
+        "text": "Personality of the writer"
+      }
+    ],
+    "correctOption": "D",
+    "explanation": "Graphology attempts to infer personality traits from handwriting. It should be distinguished from forensic handwriting examination, which evaluates authorship and document authenticity using observable writing features."
+  },
+  {
+    "id": "HM-124",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "The book entitled 'Questioned Documents' was written by the following:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Ordway Hilton"
+      },
+      {
+        "id": "B",
+        "text": "A. S. Osborn"
+      },
+      {
+        "id": "C",
+        "text": "J. V. P. Conway"
+      },
+      {
+        "id": "D",
+        "text": "David Ellen"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "Albert S. Osborn authored the influential forensic document examination book 'Questioned Documents', first published in 1910."
+  },
+  {
+    "id": "HM-125",
+    "category": "Questioned Documents & Handwriting Examination",
+    "question": "The first G.E.Q.D. in India was started at:",
+    "options": [
+      {
+        "id": "A",
+        "text": "Kolkata"
+      },
+      {
+        "id": "B",
+        "text": "Shimla"
+      },
+      {
+        "id": "C",
+        "text": "Hyderabad"
+      },
+      {
+        "id": "D",
+        "text": "Delhi"
+      }
+    ],
+    "correctOption": "B",
+    "explanation": "The supplied answer key identifies Shimla as the location of the first Government Examiner of Questioned Documents (GEQD) establishment in India."
   }
 ]
-

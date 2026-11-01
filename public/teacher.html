@@ -106,6 +106,28 @@
   <!-- MAIN WORKSPACE -->
   <main class="admin-container">
     
+    <!-- MASTER EXAM CONTROL BAR -->
+    <div class="hud-panel" style="padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+      <div>
+        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">
+          EXAMINATION MASTER CONTROL
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="masterStatusBadge" class="badge badge-amber" style="font-size:0.85rem; padding:6px 12px;">
+            🔴 EXAM CLOSED (LOGINS BLOCKED)
+          </span>
+          <span style="font-size:0.82rem; color:var(--text-secondary);" id="masterStatusDesc">
+            Students cannot log in until you click "Start Exam".
+          </span>
+        </div>
+      </div>
+      <div>
+        <button id="toggleExamLiveBtn" class="btn btn-success" style="padding:10px 22px; font-size:0.9rem; font-weight:700;">
+          ▶️ START EXAMINATION (ALLOW LOGINS)
+        </button>
+      </div>
+    </div>
+
     <!-- KPI SUMMARY CARDS -->
     <div class="kpi-grid">
       <div class="hud-panel kpi-card">

@@ -81,10 +81,15 @@
   <main class="login-container">
     
     <div class="hud-panel login-card">
-      <div style="text-align:center; margin-bottom:24px;">
+      <div style="text-align:center; margin-bottom:20px;">
         <span class="badge badge-blue" id="examCodeBadge">DFIR-BENCHMARK</span>
         <h1 style="font-size:1.4rem; margin-top:8px;" id="examTitleHead">Student Assessment Login</h1>
         <p class="mono text-muted" style="font-size:0.75rem; margin-top:4px;" id="orgName">Department of Digital Forensics</p>
+      </div>
+
+      <!-- Exam Live / Closed Indicator -->
+      <div id="examLiveStatusBanner" style="padding:10px 14px; border-radius:var(--radius-sm); font-size:0.85rem; font-weight:700; margin-bottom:16px; text-align:center;">
+        Loading exam status...
       </div>
 
       <!-- Alert Notification -->
@@ -141,6 +146,15 @@
           document.getElementById('examTitleHead').textContent = data.examTitle;
           document.getElementById('orgName').textContent = data.organization;
           document.getElementById('durationMinutesText').textContent = data.durationMinutes;
+
+          const liveBanner = document.getElementById('examLiveStatusBanner');
+          if (data.isExamLive) {
+            liveBanner.style.cssText = 'background:#ecfdf5; border:1.5px solid #a7f3d0; color:#047857;';
+            liveBanner.innerHTML = '🟢 EXAMINATION IS LIVE • Logins are permitted';
+          } else {
+            liveBanner.style.cssText = 'background:#fffbeb; border:1.5px solid #fde68a; color:#b45309;';
+            liveBanner.innerHTML = '⏸️ EXAM NOT STARTED • Waiting for instructor to open exam';
+          }
         }
       } catch (err) {
         console.error('Info fetch error:', err);
@@ -182,7 +196,9 @@
             loginBtn.disabled = false;
             loginBtn.textContent = 'START / RESUME EXAMINATION ➔';
 
-            if (data.status === 'LOCKED') {
+            if (data.status === 'EXAM_NOT_STARTED') {
+              showAlert(`⏸️ EXAM NOT STARTED: ${data.message}`, true);
+            } else if (data.status === 'LOCKED') {
               showAlert(`🔒 EXAM LOCKED: ${data.message}`, true);
             } else if (data.status === 'SUBMITTED') {
               showAlert(`⛔ ${data.message}`);

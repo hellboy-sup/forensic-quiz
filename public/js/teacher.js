@@ -257,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (s.status === 'LOCKED') {
         statusBadge = `<span class="badge badge-red">LOCKED</span>`;
         progressInfo = `<span style="color:#b91c1c; font-size:0.8rem;">${s.lockReason || 'Page refreshed'}</span>`;
-        actionHtml = `<button class="unlock-btn" onclick="window.unlockStudent('${s.studentId}')">🔓 Unlock Account</button>`;
       } else if (s.status === 'SUBMITTED') {
         statusBadge = `<span class="badge badge-blue">SUBMITTED</span>`;
         progressInfo = `<strong>${s.score}/${totalQuestions}</strong> (${s.percentage}%) - ${s.isPassed ? 'PASSED' : 'FAILED'}`;
@@ -266,6 +265,14 @@ document.addEventListener('DOMContentLoaded', () => {
         statusBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">NOT STARTED</span>`;
         progressInfo = 'Awaiting student login';
       }
+
+      actionHtml = `
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          ${s.status === 'LOCKED' ? `<button class="unlock-btn" onclick="window.unlockStudent('${s.studentId}')" title="Unlock locked account">🔓 Unlock</button>` : ''}
+          <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; min-height:28px;" onclick="window.resetStudentExam('${s.studentId}', '${s.name.replace(/'/g, "\\'")}')" title="Reset exam to fresh state">🔄 Reset Exam</button>
+          <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; min-height:28px;" onclick="window.resetStudentPassword('${s.studentId}', '${s.name.replace(/'/g, "\\'")}')" title="Generate new password">🔑 Reset Pass</button>
+        </div>
+      `;
 
       tr.innerHTML = `
         <td class="mono" style="font-weight:700;">${s.studentId}</td>
@@ -307,6 +314,56 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       alert('Network error unlocking student.');
+    }
+  };
+
+  // Global Reset Exam Handler
+  window.resetStudentExam = async function(studentId, studentName) {
+    if (!confirm(`⚠️ RESET EXAMINATION for ${studentName} (${studentId})?\n\nThis will completely clear their current answers, score, violations, and locks, allowing them to take the exam again fresh.`)) return;
+
+    try {
+      const res = await fetch('/api/teacher/students/reset-exam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-teacher-token': teacherToken
+        },
+        body: JSON.stringify({ studentId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchLiveProgress();
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (err) {
+      alert('Network error resetting exam.');
+    }
+  };
+
+  // Global Reset Password Handler
+  window.resetStudentPassword = async function(studentId, studentName) {
+    if (!confirm(`Generate a new system password for ${studentName} (${studentId})?`)) return;
+
+    try {
+      const res = await fetch('/api/teacher/students/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-teacher-token': teacherToken
+        },
+        body: JSON.stringify({ studentId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchLiveProgress();
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (err) {
+      alert('Network error resetting password.');
     }
   };
 

@@ -286,6 +286,14 @@
   color: var(--accent-amber);
 }
 
+.matrix-btn.locked-future {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+}
+
 /* PALETTE LEGEND */
 .palette-legend {
   display: grid;

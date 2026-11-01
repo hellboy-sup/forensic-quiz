@@ -174,7 +174,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.className = 'matrix-btn';
       btn.textContent = idx + 1;
       btn.dataset.index = idx;
-      btn.addEventListener('click', () => goToQuestion(idx));
+      btn.addEventListener('click', () => {
+        // Enforce sequence: cannot jump ahead to unreached questions
+        if (idx > currentIndex) {
+          const isCurrAnswered = userAnswers.has(questions[currentIndex]?.id);
+          if (!isCurrAnswered) {
+            alert('You must select an answer for the current question before moving forward.');
+            return;
+          }
+          if (idx > currentIndex + 1) {
+            alert('Questions must be completed sequentially. Please proceed to the next question.');
+            return;
+          }
+        }
+        goToQuestion(idx);
+      });
       matrixGridEl.appendChild(btn);
     });
     updateMatrixState();
@@ -182,11 +196,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateMatrixState() {
     const buttons = matrixGridEl.querySelectorAll('.matrix-btn');
+    const isCurrentAnswered = userAnswers.has(questions[currentIndex]?.id);
+
     buttons.forEach((btn, idx) => {
       const q = questions[idx];
       btn.classList.toggle('active', idx === currentIndex);
       btn.classList.toggle('answered', userAnswers.has(q.id));
       btn.classList.toggle('flagged', flaggedQuestions.has(q.id));
+
+      // Lock future questions that cannot be jumped to
+      const isLockedFuture = idx > currentIndex && (!isCurrentAnswered || idx > currentIndex + 1);
+      btn.classList.toggle('locked-future', isLockedFuture);
     });
   }
 
@@ -202,6 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     optionsContainerEl.innerHTML = '';
     const selectedOption = userAnswers.get(q.id);
+    const isCurrentAnswered = Boolean(selectedOption);
 
     q.options.forEach((opt, optIndex) => {
       const card = document.createElement('div');
@@ -233,11 +254,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Update Nav Buttons
     if (prevBtn) prevBtn.disabled = currentIndex === 0;
-    if (nextBtn) {
-      if (currentIndex === questions.length - 1) {
-        nextBtn.textContent = 'Review & Finish ➔';
-      } else {
+
+    const isLastQuestion = currentIndex === questions.length - 1;
+
+    // Requirement 2 & 3:
+    // - Without answering, student cannot go to another question
+    // - Submit button appears ONLY at the last question
+    if (isLastQuestion) {
+      if (nextBtn) nextBtn.style.display = 'none';
+      if (submitExamBtn) {
+        submitExamBtn.style.display = 'inline-flex';
+        submitExamBtn.disabled = !isCurrentAnswered;
+        submitExamBtn.style.opacity = isCurrentAnswered ? '1' : '0.5';
+        submitExamBtn.style.cursor = isCurrentAnswered ? 'pointer' : 'not-allowed';
+        submitExamBtn.title = isCurrentAnswered ? 'Submit your completed assessment' : 'Select an answer to enable final submission';
+      }
+    } else {
+      if (submitExamBtn) submitExamBtn.style.display = 'none'; // HIDDEN on all earlier questions
+      if (nextBtn) {
+        nextBtn.style.display = 'inline-flex';
         nextBtn.textContent = 'Next Question ➔';
+        nextBtn.disabled = !isCurrentAnswered;
+        nextBtn.style.opacity = isCurrentAnswered ? '1' : '0.5';
+        nextBtn.style.cursor = isCurrentAnswered ? 'pointer' : 'not-allowed';
+        nextBtn.title = isCurrentAnswered ? 'Proceed to next question' : 'You must select an answer before continuing to the next question';
       }
     }
 
@@ -266,10 +306,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (nextBtn) {
     nextBtn.addEventListener('click', () => {
+      const q = questions[currentIndex];
+      if (!userAnswers.has(q.id)) {
+        alert('You must select an answer for this question before proceeding to the next question.');
+        return;
+      }
       if (currentIndex < questions.length - 1) {
         goToQuestion(currentIndex + 1);
-      } else {
-        openSubmitModal();
       }
     });
   }

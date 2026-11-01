@@ -242,10 +242,19 @@ app.post('/api/student/login', (req, res) => {
   const durationMinutes = Number(config.durationMinutes) || 15;
   const totalSeconds = durationMinutes * 60;
 
-  // Prepare questions: Strip answers & explanations (Zero-Knowledge Client)
+  // Prepare questions: Randomize/Shuffle uniquely for each student
   let candidateQuestions = questions;
-  if (config.randomizeQuestions !== false && !student.assignedQuestions) {
+  if (!student.assignedQuestionIds || student.assignedQuestionIds.length === 0) {
     candidateQuestions = shuffleArray(questions);
+    student.assignedQuestionIds = candidateQuestions.map(q => q.id);
+  } else {
+    // Rehydrate using student's persistent shuffled order
+    const qMap = new Map(questions.map(q => [q.id, q]));
+    candidateQuestions = student.assignedQuestionIds.map(id => qMap.get(id)).filter(Boolean);
+    if (candidateQuestions.length === 0) {
+      candidateQuestions = shuffleArray(questions);
+      student.assignedQuestionIds = candidateQuestions.map(q => q.id);
+    }
   }
 
   const sanitizedQuestions = candidateQuestions.map((q, idx) => {
@@ -597,6 +606,72 @@ app.post('/api/teacher/students/unlock', checkTeacherAuth, (req, res) => {
 
   console.log(`[EXAM UNLOCKED] Teacher unlocked student ${student.name} (${student.studentId})`);
   res.json({ success: true, message: `Account unlocked for ${student.name}. They may now continue their assessment.` });
+});
+
+// Teacher: Reset Password for a Student
+app.post('/api/teacher/students/reset-password', checkTeacherAuth, (req, res) => {
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student not found.' });
+  }
+
+  student.password = generateSystemPassword('SEC');
+  writeJSON(STUDENTS_FILE, students);
+
+  console.log(`[PASSWORD RESET] Teacher reset password for ${student.name} (${student.studentId}) -> ${student.password}`);
+  res.json({
+    success: true,
+    newPassword: student.password,
+    message: `Password for ${student.name} (${student.studentId}) reset to: ${student.password}`
+  });
+});
+
+// Teacher: Reset Exam for a Student (Fresh Retake)
+app.post('/api/teacher/students/reset-exam', checkTeacherAuth, (req, res) => {
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student not found.' });
+  }
+
+  // Completely reset exam state
+  student.status = 'NOT_STARTED';
+  student.lockReason = null;
+  student.lockedAt = null;
+  student.currentAnswers = {};
+  student.currentIndex = 0;
+  student.remainingSeconds = null;
+  student.violations = [];
+  student.score = null;
+  student.totalQuestions = null;
+  student.percentage = null;
+  student.isPassed = null;
+  student.startedAt = null;
+  student.submittedAt = null;
+  student.timeSpentSeconds = null;
+  student.verificationHash = null;
+  delete student.assignedQuestionIds;
+  writeJSON(STUDENTS_FILE, students);
+
+  // Remove previous submission record if any
+  const submissions = readJSON(SUBMISSIONS_FILE, []);
+  const filteredSubmissions = submissions.filter(s => s.candidate?.id?.toLowerCase() !== student.studentId.toLowerCase());
+  writeJSON(SUBMISSIONS_FILE, filteredSubmissions);
+
+  console.log(`[EXAM RESET] Teacher reset exam for ${student.name} (${student.studentId})`);
+  res.json({
+    success: true,
+    message: `Exam for ${student.name} (${student.studentId}) has been completely reset. They can now start fresh.`
+  });
 });
 
 // Teacher: Import Students from CSV / Text with Auto System Password Generation

@@ -52,6 +52,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lockOverlay = document.getElementById('lockOverlay');
   const lockReasonText = document.getElementById('lockReasonText');
 
+  const securityWarningModal = document.getElementById('securityWarningModal');
+  const warningCountBadge = document.getElementById('warningCountBadge');
+  const warningDetailsText = document.getElementById('warningDetailsText');
+  const warningRemainingText = document.getElementById('warningRemainingText');
+  const ackWarningBtn = document.getElementById('ackWarningBtn');
+
+  if (ackWarningBtn && securityWarningModal) {
+    ackWarningBtn.addEventListener('click', () => {
+      securityWarningModal.classList.remove('active');
+    });
+  }
+
   // Populate Header
   if (examTitleEl) examTitleEl.textContent = session.examTitle || 'Forensic Assessment';
   if (candidateNameEl) candidateNameEl.textContent = student.name;
@@ -73,8 +85,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         violationBadgeEl.textContent = `VIOLATIONS: ${v.count}/${v.max}`;
         if (v.count > 0) violationBadgeEl.className = 'badge badge-red';
       }
+
+      // If under limit, display the warning popup
+      if (v.count < v.max && !v.locked) {
+        if (securityWarningModal) {
+          if (warningCountBadge) warningCountBadge.textContent = `WARNING ${v.count} OF ${v.max}`;
+          if (warningDetailsText) warningDetailsText.textContent = v.details || 'Developer Tools or Inspect attempt detected.';
+          if (warningRemainingText) {
+            const remaining = v.max - v.count;
+            warningRemainingText.textContent = `⚠️ NOTICE: You have ${remaining} warning${remaining > 1 ? 's' : ''} remaining. On warning 3, your exam will be LOCKED.`;
+          }
+          securityWarningModal.classList.add('active');
+        }
+      } else {
+        // Warning 3 or locked: Close warning modal and immediately display full lock screen
+        if (securityWarningModal) securityWarningModal.classList.remove('active');
+        showLockScreen(v.lockReason || `Exceeded permitted security warnings (${v.count}/${v.max}): Developer Tools access detected.`);
+      }
     },
     onLocked: (reason) => {
+      if (securityWarningModal) securityWarningModal.classList.remove('active');
       showLockScreen(reason);
     }
   });

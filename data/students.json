@@ -1,65 +1,26 @@
 [
   {
-    "studentId": "DF-2026-101",
-    "name": "Alice Walker",
-    "password": "SEC-8750-A",
-    "status": "SUBMITTED",
+    "studentId": "DF-2026-104",
+    "name": "Dan Brown",
+    "password": "SEC-1200-X",
+    "status": "IN_PROGRESS",
     "lockReason": null,
     "currentAnswers": {
-      "DF-102": "B",
-      "DF-103": "B",
+      "DF-109": "B",
       "DF-101": "B"
     },
-    "currentIndex": 1,
-    "remainingSeconds": 840,
+    "currentIndex": 6,
+    "remainingSeconds": 740,
     "violations": [],
-    "score": 3,
-    "totalQuestions": 10,
-    "percentage": 30,
-    "isPassed": false,
-    "startedAt": "2026-11-01T01:29:39.247Z",
-    "submittedAt": "2026-11-01T01:29:39.381Z",
-    "timeSpentSeconds": 1,
-    "verificationHash": "FB89479D76BEDB80ABEB0EDBDD7000272FA6B7C5EEDF26779FCAB5E59DD725C8",
-    "lockedAt": null
-  },
-  {
-    "studentId": "DF-2026-102",
-    "name": "Bob Martinez",
-    "password": "SEC-6211-9",
-    "status": "SUBMITTED",
-    "lockReason": null,
-    "currentAnswers": {
-      "DF-108": "C"
-    },
-    "currentIndex": 0,
-    "remainingSeconds": 898,
-    "violations": [
-      {
-        "type": "WINDOW_BLUR",
-        "details": "Window focus lost.",
-        "timestamp": "2026-11-01T01:33:29.686Z"
-      },
-      {
-        "type": "TAB_SWITCH_AWAY",
-        "details": "Application focus lost: Candidate switched tabs or minimized.",
-        "timestamp": "2026-11-01T01:33:33.302Z"
-      },
-      {
-        "type": "WINDOW_BLUR",
-        "details": "Window focus lost.",
-        "timestamp": "2026-11-01T01:33:33.615Z"
-      }
-    ],
-    "score": 0,
-    "totalQuestions": 10,
-    "percentage": 0,
-    "isPassed": false,
-    "startedAt": "2026-11-01T01:33:28.191Z",
-    "submittedAt": "2026-11-01T01:34:26.137Z",
-    "timeSpentSeconds": 58,
-    "verificationHash": "A051B0E8F102670B3D2DC2F667C361B817B5363742C9365D00606E29409AFC19",
-    "lastActive": "2026-11-01T01:33:31.030Z",
+    "score": null,
+    "totalQuestions": null,
+    "percentage": null,
+    "isPassed": null,
+    "startedAt": "2026-11-01T01:52:10.492Z",
+    "submittedAt": null,
+    "timeSpentSeconds": null,
+    "verificationHash": null,
+    "lastActive": "2026-11-01T01:55:51.318Z",
     "lockedAt": null
   }
 ]

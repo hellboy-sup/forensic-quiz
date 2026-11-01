@@ -361,7 +361,7 @@ app.post('/api/student/violation', (req, res) => {
 
   if (count >= maxViolations) {
     student.status = 'LOCKED';
-    student.lockReason = `Exceeded allowed security violations (${count}/${maxViolations})`;
+    student.lockReason = `Exceeded allowed security warnings (${count}/${maxViolations}): Developer Tools / Tampering detected`;
     student.lockedAt = new Date().toISOString();
     isLocked = true;
   }
@@ -560,6 +560,7 @@ app.post('/api/teacher/students/unlock', checkTeacherAuth, (req, res) => {
   student.status = 'IN_PROGRESS';
   student.lockReason = null;
   student.lockedAt = null;
+  student.violations = [];
   writeJSON(STUDENTS_FILE, students);
 
   console.log(`[EXAM UNLOCKED] Teacher unlocked student ${student.name} (${student.studentId})`);

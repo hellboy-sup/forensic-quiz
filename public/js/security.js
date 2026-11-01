@@ -1,7 +1,7 @@
 /**
  * FORENSIC EXAM PROCTORING & LOCK GUARDIAN
  * Completely silent. Handles refresh lock detection,
- * DevTools interception, and server telemetry.
+ * DevTools interception, warnings, and server telemetry.
  */
 
 class ProctoringShield {
@@ -14,7 +14,8 @@ class ProctoringShield {
     this.getStateCallback = options.getStateCallback || (() => ({}));
 
     this.isExamActive = false;
-    this.lastDevtoolsTrigger = 0;
+    this.lastTriggerTime = 0;
+    this.triggerCooldownMs = 2000; // 2 seconds debounce between warning increments
 
     this.initProtections();
     this.initRefreshLockHandler();
@@ -45,12 +46,10 @@ class ProctoringShield {
         remainingSeconds: state.remainingSeconds || 0
       });
 
-      // Use navigator.sendBeacon for reliable delivery during unload/refresh
       if (navigator.sendBeacon) {
         const blob = new Blob([payload], { type: 'application/json' });
         navigator.sendBeacon('/api/student/lock', blob);
       } else {
-        // Fallback sync fetch
         fetch('/api/student/lock', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -60,25 +59,21 @@ class ProctoringShield {
       }
     };
 
-    window.addEventListener('beforeunload', (e) => {
-      if (this.isExamActive) {
-        triggerLock();
-      }
+    window.addEventListener('beforeunload', () => {
+      if (this.isExamActive) triggerLock();
     });
 
-    window.addEventListener('pagehide', (e) => {
-      if (this.isExamActive) {
-        triggerLock();
-      }
+    window.addEventListener('pagehide', () => {
+      if (this.isExamActive) triggerLock();
     });
   }
 
   initProtections() {
-    // 1. Prevent Context Menu (Right Click)
+    // 1. Prevent Context Menu (Right Click Inspect)
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (this.isExamActive) {
-        this.triggerViolation('RIGHT_CLICK_ATTEMPT', 'Right-click context menu is restricted.');
+        this.triggerViolation('DEVTOOLS_RIGHT_CLICK', 'Right-click context menu / Inspect is blocked.');
       }
       return false;
     }, false);
@@ -94,7 +89,7 @@ class ProctoringShield {
       if (key === 'F12' || keyCode === 123) {
         e.preventDefault();
         e.stopPropagation();
-        this.triggerViolation('KEYBOARD_F12', 'Developer Tools shortcut (F12) intercepted.');
+        this.triggerViolation('DEVTOOLS_F12', 'Developer Tools shortcut (F12) detected.');
         return false;
       }
 
@@ -102,7 +97,7 @@ class ProctoringShield {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'I' || keyCode === 73)) {
         e.preventDefault();
         e.stopPropagation();
-        this.triggerViolation('KEYBOARD_DEVTOOLS_INSPECT', 'Inspect shortcut intercepted.');
+        this.triggerViolation('DEVTOOLS_INSPECT', 'Inspect shortcut (Ctrl+Shift+I) detected.');
         return false;
       }
 
@@ -110,7 +105,7 @@ class ProctoringShield {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'J' || keyCode === 74)) {
         e.preventDefault();
         e.stopPropagation();
-        this.triggerViolation('KEYBOARD_DEVTOOLS_CONSOLE', 'Console shortcut intercepted.');
+        this.triggerViolation('DEVTOOLS_CONSOLE', 'Console shortcut (Ctrl+Shift+J) detected.');
         return false;
       }
 
@@ -118,7 +113,7 @@ class ProctoringShield {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'C' || keyCode === 67)) {
         e.preventDefault();
         e.stopPropagation();
-        this.triggerViolation('KEYBOARD_DEVTOOLS_INSPECT_EL', 'Element selector shortcut intercepted.');
+        this.triggerViolation('DEVTOOLS_ELEMENT_SELECT', 'Element selector shortcut (Ctrl+Shift+C) detected.');
         return false;
       }
 
@@ -126,7 +121,7 @@ class ProctoringShield {
       if ((e.ctrlKey || e.metaKey) && (key === 'U' || keyCode === 85)) {
         e.preventDefault();
         e.stopPropagation();
-        this.triggerViolation('KEYBOARD_VIEW_SOURCE', 'View-source shortcut intercepted.');
+        this.triggerViolation('DEVTOOLS_VIEW_SOURCE', 'View source shortcut (Ctrl+U) detected.');
         return false;
       }
 
@@ -143,11 +138,11 @@ class ProctoringShield {
       }
     }, true);
 
-    // 3. Tab & Visibility Monitor
+    // 3. Tab Switching Monitor
     document.addEventListener('visibilitychange', () => {
       if (!this.isExamActive) return;
       if (document.visibilityState === 'hidden') {
-        this.triggerViolation('TAB_SWITCH_AWAY', 'Application focus lost: Candidate switched tabs or minimized.');
+        this.triggerViolation('TAB_SWITCH', 'Application focus lost: Student switched tabs or minimized.');
       }
     });
 
@@ -157,21 +152,20 @@ class ProctoringShield {
         if (!document.hasFocus() && this.isExamActive) {
           this.triggerViolation('WINDOW_BLUR', 'Window focus lost.');
         }
-      }, 300);
+      }, 350);
     });
 
-    // 4. DevTools Trap
+    // 4. DevTools Active Heuristics Traps
     this.startDevToolsDetector();
   }
 
   startDevToolsDetector() {
+    // A. Console Object Getter Trap (Triggers when Console / Elements panel evaluates objects)
     const element = new Image();
     Object.defineProperty(element, 'id', {
       get: () => {
-        const now = Date.now();
-        if (this.isExamActive && (now - this.lastDevtoolsTrigger > 3000)) {
-          this.lastDevtoolsTrigger = now;
-          this.triggerViolation('DEVTOOLS_INSPECT_DETECTED', 'Browser inspector opened.');
+        if (this.isExamActive) {
+          this.triggerViolation('DEVTOOLS_OPEN_INSPECT', 'Active Developer Tools inspector detected.');
         }
       }
     });
@@ -180,27 +174,42 @@ class ProctoringShield {
       if (!this.isExamActive) return;
       console.log(element);
       console.clear();
-    }, 2500);
+    }, 2000);
 
-    // Dimension Trap (desktop only)
+    // B. Viewport Dimension Delta Trap (Detects docked DevTools in browser)
     setInterval(() => {
       if (!this.isExamActive) return;
-      if (window.innerWidth > 768) {
+      if (window.innerWidth > 600) {
         const widthDelta = window.outerWidth - window.innerWidth > 160;
         const heightDelta = window.outerHeight - window.innerHeight > 160;
         if (widthDelta || heightDelta) {
-          const now = Date.now();
-          if (now - this.lastDevtoolsTrigger > 3000) {
-            this.lastDevtoolsTrigger = now;
-            this.triggerViolation('DEVTOOLS_DOCK', 'DevTools dock opened.');
-          }
+          this.triggerViolation('DEVTOOLS_PANEL_OPEN', 'Developer Tools dock/panel opened.');
         }
       }
-    }, 2000);
+    }, 1500);
+
+    // C. Debugger Execution Latency Trap
+    setInterval(() => {
+      if (!this.isExamActive) return;
+      const start = performance.now();
+      // eslint-disable-next-line no-debugger
+      debugger;
+      const diff = performance.now() - start;
+      if (diff > 100) {
+        this.triggerViolation('DEVTOOLS_DEBUGGER_PAUSE', 'Developer Tools breakpoint / debugger triggered.');
+      }
+    }, 2500);
   }
 
   async triggerViolation(type, details) {
     if (!this.isExamActive || !this.studentId) return;
+
+    const now = Date.now();
+    // Cooldown check so rapid events count as one warning step
+    if (now - this.lastTriggerTime < this.triggerCooldownMs) {
+      return;
+    }
+    this.lastTriggerTime = now;
 
     try {
       const res = await fetch('/api/student/violation', {
@@ -219,7 +228,9 @@ class ProctoringShield {
           type,
           details,
           count: data.currentViolations,
-          max: data.maxViolations
+          max: data.maxViolations,
+          locked: data.locked,
+          lockReason: data.lockReason
         });
 
         if (data.locked) {

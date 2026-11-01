@@ -114,3 +114,4 @@ Edit the file at [`data/questions.json`](data/questions.json) using this standar
 * **Audit Table**: Full candidate dossier, question-by-question breakdown, and tamper logs.
 * **One-Click CSV Export**: Download complete grades and verification hashes into Excel/CSV.
 * **Configurable Exam Settings**: Duration, passing score, violation threshold, randomization options, and admin passcode.
+

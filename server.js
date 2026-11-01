@@ -16,12 +16,14 @@ const DATA_DIR = path.join(__dirname, 'data');
 const QUESTIONS_FILE = path.join(DATA_DIR, 'questions.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const SUBMISSIONS_FILE = path.join(DATA_DIR, 'submissions.json');
+const STUDENTS_FILE = path.join(DATA_DIR, 'students.json');
 
-// Ensure files exist
+// Ensure directory and files exist
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(SUBMISSIONS_FILE)) fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify([], null, 2));
+if (!fs.existsSync(STUDENTS_FILE)) fs.writeFileSync(STUDENTS_FILE, JSON.stringify([], null, 2));
 
-// Helper: Read JSON file safely
+// Helper: Read JSON safely
 function readJSON(file, fallback = {}) {
   try {
     if (!fs.existsSync(file)) return fallback;
@@ -33,7 +35,7 @@ function readJSON(file, fallback = {}) {
   }
 }
 
-// Helper: Write JSON file safely
+// Helper: Write JSON safely
 function writeJSON(file, data) {
   try {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
@@ -44,11 +46,15 @@ function writeJSON(file, data) {
   }
 }
 
-// In-Memory active candidate sessions
-// key: sessionId -> { candidate, startedAt, expiresAt, questionKeys, violations: [], submitted: false }
-const activeSessions = new Map();
+// Helper: Generate Secure System Password (e.g., DF-8391-X)
+function generateSystemPassword(prefix = 'DF') {
+  const digits = Math.floor(1000 + Math.random() * 9000);
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const char = chars.charAt(Math.floor(Math.random() * chars.length));
+  return `${prefix}-${digits}-${char}`;
+}
 
-// Helper: Fisher-Yates shuffle
+// Fisher-Yates array shuffle
 function shuffleArray(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -59,50 +65,179 @@ function shuffleArray(array) {
 }
 
 // -----------------------------------------------------------------------------
-// PUBLIC CANDIDATE ENDPOINTS
+// TEACHER BRUTE-FORCE PROTECTION & AUTHENTICATION
 // -----------------------------------------------------------------------------
+// IP/Username Failed Login Tracker
+// key: ip -> { count: number, lockedUntil: number | null }
+const loginFailures = new Map();
+// Active authenticated teacher tokens (token -> expiry timestamp)
+const teacherSessions = new Map();
 
-// 1. Get Exam Metadata (Zero questions or answers revealed)
-app.get('/api/quiz/info', (req, res) => {
+function getClientIP(req) {
+  return req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+}
+
+function checkTeacherAuth(req, res, next) {
+  const token = req.headers['x-teacher-token'] || req.query.token;
+  if (!token || !teacherSessions.has(token)) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: Invalid or expired teacher session.' });
+  }
+
+  const expiry = teacherSessions.get(token);
+  if (Date.now() > expiry) {
+    teacherSessions.delete(token);
+    return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+  }
+
+  // Extend session by 2 hours
+  teacherSessions.set(token, Date.now() + 2 * 60 * 60 * 1000);
+  next();
+}
+
+// Teacher Login with Anti-Brute-Force Rate Limiting
+app.post('/api/teacher/login', (req, res) => {
+  const ip = getClientIP(req);
+  const { username, passcode } = req.body;
+  const now = Date.now();
+
   const config = readJSON(CONFIG_FILE, {});
-  const questions = readJSON(QUESTIONS_FILE, []);
+  const maxAttempts = config.maxLoginAttempts || 5;
+  const lockoutMs = (config.lockoutDurationMinutes || 15) * 60 * 1000;
 
-  res.json({
-    success: true,
-    examTitle: config.examTitle || 'Forensic Qualification Benchmark',
-    examCode: config.examCode || 'DFIR-EXAM',
-    organization: config.organization || 'Digital Forensics Unit',
-    durationMinutes: config.durationMinutes || 15,
-    violationLimit: config.violationLimit || 3,
-    passingScorePercent: config.passingScorePercent || 70,
-    totalQuestions: questions.length,
-    strictFullscreen: config.strictFullscreen !== false,
-    blockDevtools: config.blockDevtools !== false
+  const failureRecord = loginFailures.get(ip) || { count: 0, lockedUntil: null };
+
+  // Check if currently locked out
+  if (failureRecord.lockedUntil && now < failureRecord.lockedUntil) {
+    const remainingSeconds = Math.ceil((failureRecord.lockedUntil - now) / 1000);
+    return res.status(429).json({
+      success: false,
+      message: `Security Lockout Active. Too many failed attempts. Try again in ${remainingSeconds} seconds.`,
+      locked: true,
+      remainingSeconds
+    });
+  }
+
+  // Reset if lockout window has passed
+  if (failureRecord.lockedUntil && now >= failureRecord.lockedUntil) {
+    failureRecord.count = 0;
+    failureRecord.lockedUntil = null;
+  }
+
+  const expectedUsername = config.teacherUsername || 'examiner';
+  const expectedPasscode = config.teacherPasscode || 'forensic@teacher2026';
+
+  // Constant-time password check simulation
+  const isUsernameMatch = (username || '').trim().toLowerCase() === expectedUsername.toLowerCase();
+  const isPassMatch = passcode && crypto.timingSafeEqual(
+    Buffer.from((passcode || '').padEnd(64, ' ')),
+    Buffer.from(expectedPasscode.padEnd(64, ' '))
+  );
+
+  if (isUsernameMatch && isPassMatch) {
+    // Reset failed count on successful authentication
+    loginFailures.delete(ip);
+
+    // Create session token (valid for 4 hours)
+    const token = crypto.randomBytes(32).toString('hex');
+    teacherSessions.set(token, now + 4 * 60 * 60 * 1000);
+
+    return res.json({
+      success: true,
+      message: 'Teacher authenticated successfully.',
+      token,
+      username: expectedUsername
+    });
+  }
+
+  // Handle Failed Attempt
+  failureRecord.count += 1;
+  const attemptsRemaining = Math.max(0, maxAttempts - failureRecord.count);
+
+  if (failureRecord.count >= maxAttempts) {
+    failureRecord.lockedUntil = now + lockoutMs;
+    loginFailures.set(ip, failureRecord);
+    return res.status(429).json({
+      success: false,
+      message: `Too many failed login attempts. Terminal locked for ${config.lockoutDurationMinutes || 15} minutes.`,
+      locked: true,
+      remainingSeconds: Math.ceil(lockoutMs / 1000)
+    });
+  }
+
+  loginFailures.set(ip, failureRecord);
+  return res.status(401).json({
+    success: false,
+    message: `Invalid credentials. Attempts remaining before security lockout: ${attemptsRemaining}`,
+    attemptsRemaining
   });
 });
 
-// 2. Start Exam Session (Generates sanitized questions, records session on server)
-app.post('/api/quiz/start', (req, res) => {
-  const { candidateName, candidateId, accessCode } = req.body;
+// Teacher Logout
+app.post('/api/teacher/logout', (req, res) => {
+  const token = req.headers['x-teacher-token'];
+  if (token) teacherSessions.delete(token);
+  res.json({ success: true, message: 'Logged out.' });
+});
 
-  if (!candidateName || !candidateId) {
-    return res.status(400).json({ success: false, message: 'Candidate Name and ID / Roll No are required.' });
+// -----------------------------------------------------------------------------
+// STUDENT AUTHENTICATION & SINGLE ATTEMPT / LOCK CONTROLS
+// -----------------------------------------------------------------------------
+
+// Active exam sessions mapping: studentId -> session metadata
+const activeStudentSessions = new Map();
+
+// Student Login
+app.post('/api/student/login', (req, res) => {
+  const { studentId, password } = req.body;
+
+  if (!studentId || !password) {
+    return res.status(400).json({ success: false, message: 'Student ID and Password are required.' });
+  }
+
+  const cleanId = studentId.trim();
+  const cleanPass = password.trim();
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === cleanId.toLowerCase());
+
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student ID not found in exam roll.' });
+  }
+
+  if (student.password !== cleanPass) {
+    return res.status(401).json({ success: false, message: 'Incorrect system-generated password.' });
+  }
+
+  // 1. Single Attempt Check: Cannot retake if already submitted
+  if (student.status === 'SUBMITTED') {
+    return res.status(403).json({
+      success: false,
+      status: 'SUBMITTED',
+      message: 'Examination already completed and certified. Multiple attempts are strictly prohibited.'
+    });
+  }
+
+  // 2. Lock Check: If page refreshed or disconnect occurred, teacher must unlock
+  if (student.status === 'LOCKED') {
+    return res.status(403).json({
+      success: false,
+      status: 'LOCKED',
+      lockReason: student.lockReason || 'Page refreshed or session disconnected',
+      message: `Your exam session is locked: "${student.lockReason || 'Page refreshed or exited'}". Please inform your teacher to unlock your session.`
+    });
   }
 
   const config = readJSON(CONFIG_FILE, {});
-  const fullQuestions = readJSON(QUESTIONS_FILE, []);
+  const questions = readJSON(QUESTIONS_FILE, []);
+  const durationMinutes = Number(config.durationMinutes) || 15;
+  const totalSeconds = durationMinutes * 60;
 
-  if (!fullQuestions || fullQuestions.length === 0) {
-    return res.status(500).json({ success: false, message: 'Question bank is currently empty. Please contact examiner.' });
+  // Prepare questions: Strip answers & explanations (Zero-Knowledge Client)
+  let candidateQuestions = questions;
+  if (config.randomizeQuestions !== false && !student.assignedQuestions) {
+    candidateQuestions = shuffleArray(questions);
   }
 
-  // Shuffle questions if configured
-  let candidateQuestions = fullQuestions;
-  if (config.randomizeQuestions !== false) {
-    candidateQuestions = shuffleArray(fullQuestions);
-  }
-
-  // Strip answers & explanations (Absolute zero-knowledge client protection)
   const sanitizedQuestions = candidateQuestions.map((q, idx) => {
     let options = q.options;
     if (config.randomizeOptions !== false) {
@@ -113,137 +248,175 @@ app.post('/api/quiz/start', (req, res) => {
       id: q.id,
       category: q.category || 'General Forensics',
       question: q.question,
-      options: options.map(opt => ({
-        id: opt.id,
-        text: opt.text
-      }))
+      options: options.map(opt => ({ id: opt.id, text: opt.text }))
     };
   });
 
-  const durationMinutes = Number(config.durationMinutes) || 15;
-  const startedAt = Date.now();
-  // Server-enforced expiry with a 30s network buffer
-  const expiresAt = startedAt + (durationMinutes * 60 * 1000) + 30000;
+  const now = Date.now();
   const sessionId = crypto.randomUUID();
 
-  // Create session record
-  activeSessions.set(sessionId, {
+  // If starting for the very first time
+  if (student.status === 'NOT_STARTED') {
+    student.status = 'IN_PROGRESS';
+    student.startedAt = new Date(now).toISOString();
+    student.remainingSeconds = totalSeconds;
+    student.currentAnswers = {};
+    student.currentIndex = 0;
+    student.violations = [];
+    writeJSON(STUDENTS_FILE, students);
+  }
+
+  // Active session tracking
+  activeStudentSessions.set(student.studentId, {
     sessionId,
-    candidate: {
-      name: candidateName.trim(),
-      id: candidateId.trim(),
-      ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress
-    },
-    startedAt,
-    expiresAt,
-    durationMinutes,
-    questionCount: sanitizedQuestions.length,
-    violations: [],
-    submitted: false
+    studentId: student.studentId,
+    ip: getClientIP(req),
+    lastHeartbeat: now
   });
 
   res.json({
     success: true,
     sessionId,
-    candidate: {
-      name: candidateName,
-      id: candidateId
+    student: {
+      studentId: student.studentId,
+      name: student.name
     },
     examTitle: config.examTitle,
     examCode: config.examCode,
     durationMinutes,
-    startedAt,
-    expiresAt,
+    remainingSeconds: student.remainingSeconds || totalSeconds,
+    currentAnswers: student.currentAnswers || {},
+    currentIndex: student.currentIndex || 0,
     violationLimit: config.violationLimit || 3,
     questions: sanitizedQuestions
   });
 });
 
-// 3. Telemetry: Log Proctoring Violation
-app.post('/api/quiz/violation', (req, res) => {
-  const { sessionId, type, details, timestamp } = req.body;
+// Periodic Progress Sync (Auto-saves answers & remaining time seamlessly)
+app.post('/api/student/sync', (req, res) => {
+  const { studentId, currentAnswers, currentIndex, remainingSeconds } = req.body;
 
-  if (!sessionId || !activeSessions.has(sessionId)) {
-    return res.status(404).json({ success: false, message: 'Invalid or expired session.' });
+  if (!studentId) return res.status(400).json({ success: false });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (student && student.status === 'IN_PROGRESS') {
+    if (currentAnswers) student.currentAnswers = currentAnswers;
+    if (currentIndex !== undefined) student.currentIndex = currentIndex;
+    if (remainingSeconds !== undefined) student.remainingSeconds = remainingSeconds;
+    student.lastActive = new Date().toISOString();
+    writeJSON(STUDENTS_FILE, students);
   }
 
-  const session = activeSessions.get(sessionId);
-  if (session.submitted) {
-    return res.json({ success: false, message: 'Session already completed.' });
+  res.json({ success: true });
+});
+
+// Lock Session Trigger (Fires when page refreshes, closes, or candidate exits)
+app.post('/api/student/lock', (req, res) => {
+  const { studentId, reason, currentAnswers, currentIndex, remainingSeconds } = req.body;
+
+  if (!studentId) return res.status(400).json({ success: false });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (student && student.status === 'IN_PROGRESS') {
+    student.status = 'LOCKED';
+    student.lockReason = reason || 'Page refreshed or browser session disconnected';
+    if (currentAnswers) student.currentAnswers = currentAnswers;
+    if (currentIndex !== undefined) student.currentIndex = currentIndex;
+    if (remainingSeconds !== undefined) student.remainingSeconds = remainingSeconds;
+    student.lockedAt = new Date().toISOString();
+    writeJSON(STUDENTS_FILE, students);
+    console.log(`[EXAM LOCK] Student ${student.name} (${student.studentId}) locked: ${student.lockReason}`);
   }
+
+  res.json({ success: true, locked: true });
+});
+
+// Security Violation Logged
+app.post('/api/student/violation', (req, res) => {
+  const { studentId, type, details } = req.body;
+
+  if (!studentId) return res.status(400).json({ success: false });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (!student) return res.status(404).json({ success: false });
 
   const config = readJSON(CONFIG_FILE, {});
   const maxViolations = Number(config.violationLimit) || 3;
 
-  const violationEntry = {
-    type: type || 'ANOMALY_DETECTED',
-    details: details || 'Proctoring security trigger',
-    timestamp: timestamp || Date.now(),
-    iso: new Date().toISOString()
-  };
+  if (!student.violations) student.violations = [];
+  student.violations.push({
+    type: type || 'BREACH',
+    details: details || 'Proctoring alert',
+    timestamp: new Date().toISOString()
+  });
 
-  session.violations.push(violationEntry);
-  const currentCount = session.violations.length;
-  const isTerminated = currentCount >= maxViolations;
+  const count = student.violations.length;
+  let isLocked = false;
+
+  if (count >= maxViolations) {
+    student.status = 'LOCKED';
+    student.lockReason = `Exceeded allowed security violations (${count}/${maxViolations})`;
+    student.lockedAt = new Date().toISOString();
+    isLocked = true;
+  }
+
+  writeJSON(STUDENTS_FILE, students);
 
   res.json({
     success: true,
-    currentViolations: currentCount,
+    currentViolations: count,
     maxViolations,
-    terminated: isTerminated,
-    reason: isTerminated ? `Exceeded permitted security violation threshold (${maxViolations})` : null
+    locked: isLocked,
+    lockReason: student.lockReason
   });
 });
 
-// 4. Submit Answers (Evaluated purely on the server)
-app.post('/api/quiz/submit', (req, res) => {
-  const { sessionId, answers, autoSubmitted, terminationReason } = req.body;
+// Student Final Submission
+app.post('/api/student/submit', (req, res) => {
+  const { studentId, answers } = req.body;
 
-  if (!sessionId || !activeSessions.has(sessionId)) {
-    return res.status(404).json({ success: false, message: 'Session not found or already closed.' });
-  }
+  if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
 
-  const session = activeSessions.get(sessionId);
-  if (session.submitted) {
-    return res.status(400).json({ success: false, message: 'Assessment has already been submitted.' });
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+
+  if (student.status === 'SUBMITTED') {
+    return res.status(400).json({ success: false, message: 'Assessment already submitted.' });
   }
 
   const now = Date.now();
   const config = readJSON(CONFIG_FILE, {});
-  const fullQuestions = readJSON(QUESTIONS_FILE, []);
-  const questionMap = new Map(fullQuestions.map(q => [q.id, q]));
-
-  // Create an answer lookup from client submission
-  // answers format: [{ questionId, selectedOption }]
+  const questions = readJSON(QUESTIONS_FILE, []);
   const studentAnswersMap = new Map();
-  if (Array.isArray(answers)) {
-    answers.forEach(a => {
-      if (a && a.questionId) {
-        studentAnswersMap.set(a.questionId, a.selectedOption);
-      }
-    });
+
+  if (answers && typeof answers === 'object') {
+    Object.keys(answers).forEach(qid => studentAnswersMap.set(qid, answers[qid]));
   }
 
-  // Calculate score strictly against secure server data
+  // Calculate score strictly on server
   let score = 0;
-  const total = fullQuestions.length;
+  const total = questions.length;
   const categoryStats = {};
   const questionResults = [];
 
-  fullQuestions.forEach((q, idx) => {
+  questions.forEach((q, idx) => {
     const studentChoice = studentAnswersMap.get(q.id) || null;
     const isCorrect = studentChoice === q.correctOption;
     if (isCorrect) score++;
 
-    // Category breakdown
-    const cat = q.category || 'General';
-    if (!categoryStats[cat]) {
-      categoryStats[cat] = { total: 0, correct: 0 };
-    }
+    const cat = q.category || 'General Forensics';
+    if (!categoryStats[cat]) categoryStats[cat] = { total: 0, correct: 0 };
     categoryStats[cat].total++;
     if (isCorrect) categoryStats[cat].correct++;
 
-    // Record review item (now safely reveal explanation since exam is over)
     questionResults.push({
       index: idx + 1,
       id: q.id,
@@ -259,51 +432,56 @@ app.post('/api/quiz/submit', (req, res) => {
 
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const passMark = Number(config.passingScorePercent) || 70;
-  const isPassed = percentage >= passMark && (!terminationReason);
+  const isPassed = percentage >= passMark;
 
-  // Compute Chain of Custody Cryptographic Hash
-  const hashPayload = `${session.candidate.id}:${session.candidate.name}:${score}:${total}:${session.startedAt}:${now}:${session.violations.length}`;
+  // Cryptographic Chain of Custody SHA-256 seal
+  const hashPayload = `${student.studentId}:${student.name}:${score}:${total}:${student.startedAt}:${now}`;
   const verificationHash = crypto.createHash('sha256').update(hashPayload).digest('hex').toUpperCase();
 
-  const timeSpentSeconds = Math.max(1, Math.round((now - session.startedAt) / 1000));
+  const startedTimeMs = student.startedAt ? new Date(student.startedAt).getTime() : now - 60000;
+  const timeSpentSeconds = Math.max(1, Math.round((now - startedTimeMs) / 1000));
 
+  // Update student record
+  student.status = 'SUBMITTED';
+  student.score = score;
+  student.totalQuestions = total;
+  student.percentage = percentage;
+  student.isPassed = isPassed;
+  student.submittedAt = new Date(now).toISOString();
+  student.timeSpentSeconds = timeSpentSeconds;
+  student.verificationHash = verificationHash;
+  student.currentAnswers = answers || {};
+  writeJSON(STUDENTS_FILE, students);
+
+  // Append to submissions.json
+  const submissions = readJSON(SUBMISSIONS_FILE, []);
   const submissionRecord = {
     submissionId: 'SUB-' + crypto.randomUUID().substring(0, 8).toUpperCase(),
-    candidate: session.candidate,
+    candidate: { name: student.name, id: student.studentId },
     examTitle: config.examTitle,
     examCode: config.examCode,
     score,
     totalQuestions: total,
     percentage,
     isPassed,
-    autoSubmitted: Boolean(autoSubmitted),
-    terminationReason: terminationReason || null,
-    violations: session.violations,
-    violationCount: session.violations.length,
-    startedAt: new Date(session.startedAt).toISOString(),
-    submittedAt: new Date(now).toISOString(),
+    violations: student.violations || [],
+    violationCount: (student.violations || []).length,
+    startedAt: student.startedAt,
+    submittedAt: student.submittedAt,
     timeSpentSeconds,
-    verificationHash,
-    categoryStats,
-    resultsSummary: questionResults
+    verificationHash
   };
-
-  // Mark session as submitted
-  session.submitted = true;
-
-  // Persist to submissions.json
-  const submissions = readJSON(SUBMISSIONS_FILE, []);
   submissions.unshift(submissionRecord);
   writeJSON(SUBMISSIONS_FILE, submissions);
 
-  // Return full certified result to candidate
+  // Return certified scorecard
   res.json({
     success: true,
     data: {
       submissionId: submissionRecord.submissionId,
-      candidate: submissionRecord.candidate,
-      examTitle: submissionRecord.examTitle,
-      examCode: submissionRecord.examCode,
+      candidate: { name: student.name, id: student.studentId },
+      examTitle: config.examTitle,
+      examCode: config.examCode,
       score,
       totalQuestions: total,
       percentage,
@@ -311,8 +489,7 @@ app.post('/api/quiz/submit', (req, res) => {
       passMark,
       timeSpentSeconds,
       verificationHash,
-      violations: submissionRecord.violations,
-      terminationReason: submissionRecord.terminationReason,
+      violations: student.violations || [],
       categoryStats,
       questionResults
     }
@@ -320,90 +497,244 @@ app.post('/api/quiz/submit', (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
-// ADMIN MANAGEMENT ENDPOINTS
+// TEACHER DASHBOARD & PROGRESS MONITORING APIS
 // -----------------------------------------------------------------------------
 
-// Admin Auth Middleware
-function checkAdminAuth(req, res, next) {
-  const passcode = req.headers['x-admin-passcode'] || req.query.passcode;
-  const config = readJSON(CONFIG_FILE, {});
-  const expectedPasscode = config.adminPasscode || 'forensic@admin2026';
-
-  if (!passcode || passcode !== expectedPasscode) {
-    return res.status(401).json({ success: false, message: 'Invalid Admin Passcode.' });
-  }
-  next();
-}
-
-// Admin: Overview Metrics & Submissions
-app.get('/api/admin/overview', checkAdminAuth, (req, res) => {
-  const config = readJSON(CONFIG_FILE, {});
+// Teacher: Get Real-Time Live Student Progress
+app.get('/api/teacher/students', checkTeacherAuth, (req, res) => {
+  const students = readJSON(STUDENTS_FILE, []);
   const questions = readJSON(QUESTIONS_FILE, []);
-  const submissions = readJSON(SUBMISSIONS_FILE, []);
+  const totalQuestions = questions.length;
 
-  const totalAttempts = submissions.length;
-  const passedAttempts = submissions.filter(s => s.isPassed).length;
-  const flaggedAttempts = submissions.filter(s => s.violationCount > 0 || s.terminationReason).length;
-  const avgScore = totalAttempts > 0 
-    ? Math.round(submissions.reduce((acc, s) => acc + s.percentage, 0) / totalAttempts) 
-    : 0;
-
-  res.json({
-    success: true,
-    metrics: {
-      totalQuestions: questions.length,
-      totalAttempts,
-      passedAttempts,
-      flaggedAttempts,
-      avgScore
-    },
-    config: {
-      examTitle: config.examTitle,
-      examCode: config.examCode,
-      durationMinutes: config.durationMinutes,
-      violationLimit: config.violationLimit,
-      passingScorePercent: config.passingScorePercent,
-      randomizeQuestions: config.randomizeQuestions,
-      randomizeOptions: config.randomizeOptions
-    },
-    submissions: submissions.map(s => ({
-      submissionId: s.submissionId,
-      candidate: s.candidate,
+  const progressList = students.map(s => {
+    const answeredCount = s.currentAnswers ? Object.keys(s.currentAnswers).length : 0;
+    return {
+      studentId: s.studentId,
+      name: s.name,
+      password: s.password,
+      status: s.status, // NOT_STARTED, IN_PROGRESS, LOCKED, SUBMITTED
+      lockReason: s.lockReason || null,
+      lockedAt: s.lockedAt || null,
+      answeredCount,
+      totalQuestions,
+      currentIndex: (s.currentIndex || 0) + 1,
+      remainingSeconds: s.remainingSeconds || null,
+      violationCount: (s.violations || []).length,
+      violations: s.violations || [],
       score: s.score,
-      totalQuestions: s.totalQuestions,
       percentage: s.percentage,
       isPassed: s.isPassed,
-      violationCount: s.violationCount,
-      violations: s.violations,
-      terminationReason: s.terminationReason,
       submittedAt: s.submittedAt,
       timeSpentSeconds: s.timeSpentSeconds,
       verificationHash: s.verificationHash
-    }))
+    };
+  });
+
+  const total = students.length;
+  const inProgress = students.filter(s => s.status === 'IN_PROGRESS').length;
+  const locked = students.filter(s => s.status === 'LOCKED').length;
+  const submitted = students.filter(s => s.status === 'SUBMITTED').length;
+  const notStarted = students.filter(s => s.status === 'NOT_STARTED').length;
+
+  res.json({
+    success: true,
+    summary: { total, inProgress, locked, submitted, notStarted, totalQuestions },
+    students: progressList
   });
 });
 
-// Admin: Get Raw Question Bank (with answers)
-app.get('/api/admin/questions', checkAdminAuth, (req, res) => {
+// Teacher: Unlock a Locked Student
+app.post('/api/teacher/students/unlock', checkTeacherAuth, (req, res) => {
+  const { studentId } = req.body;
+
+  if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student not found.' });
+  }
+
+  // Restore status to IN_PROGRESS so student can resume
+  student.status = 'IN_PROGRESS';
+  student.lockReason = null;
+  student.lockedAt = null;
+  writeJSON(STUDENTS_FILE, students);
+
+  console.log(`[EXAM UNLOCKED] Teacher unlocked student ${student.name} (${student.studentId})`);
+  res.json({ success: true, message: `Account unlocked for ${student.name}. They may now continue their assessment.` });
+});
+
+// Teacher: Import Students from CSV / Text with Auto System Password Generation
+app.post('/api/teacher/students/import-csv', checkTeacherAuth, (req, res) => {
+  const { csvText, mode } = req.body; // mode: 'replace' | 'append'
+
+  if (!csvText || typeof csvText !== 'string') {
+    return res.status(400).json({ success: false, message: 'CSV text data required.' });
+  }
+
+  const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) {
+    return res.status(400).json({ success: false, message: 'CSV contains no rows.' });
+  }
+
+  const newStudents = [];
+  const existingStudents = readJSON(STUDENTS_FILE, []);
+  const existingIds = new Set(existingStudents.map(s => s.studentId.toLowerCase()));
+
+  // Process rows (Supports header detection: Name, StudentID or Roll, Name)
+  let startIndex = 0;
+  const firstLine = lines[0].toLowerCase();
+  if (firstLine.includes('name') || firstLine.includes('roll') || firstLine.includes('id')) {
+    startIndex = 1;
+  }
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const parts = lines[i].split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+    if (parts.length < 2) continue;
+
+    // Detect which column is ID vs Name
+    let studentId = '';
+    let name = '';
+
+    if (/\d/.test(parts[0]) && !/\d/.test(parts[1])) {
+      studentId = parts[0];
+      name = parts[1];
+    } else if (!/\d/.test(parts[0]) && /\d/.test(parts[1])) {
+      name = parts[0];
+      studentId = parts[1];
+    } else {
+      studentId = parts[0];
+      name = parts[1];
+    }
+
+    if (!studentId || !name) continue;
+
+    const password = generateSystemPassword('SEC');
+
+    newStudents.push({
+      studentId,
+      name,
+      password,
+      status: 'NOT_STARTED',
+      lockReason: null,
+      currentAnswers: {},
+      currentIndex: 0,
+      remainingSeconds: null,
+      violations: [],
+      score: null,
+      totalQuestions: null,
+      percentage: null,
+      isPassed: null,
+      startedAt: null,
+      submittedAt: null,
+      timeSpentSeconds: null,
+      verificationHash: null
+    });
+  }
+
+  if (newStudents.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Could not extract valid student rows. Ensure format is: StudentID, Student Name'
+    });
+  }
+
+  let finalStudents = [];
+  if (mode === 'append') {
+    finalStudents = [...existingStudents, ...newStudents];
+  } else {
+    finalStudents = newStudents;
+  }
+
+  writeJSON(STUDENTS_FILE, finalStudents);
+  res.json({
+    success: true,
+    message: `Successfully generated credentials for ${newStudents.length} students.`,
+    count: finalStudents.length
+  });
+});
+
+// Teacher: Download Credentials Sheet (CSV) with System-Generated Passwords
+app.get('/api/teacher/students/export-credentials', checkTeacherAuth, (req, res) => {
+  const students = readJSON(STUDENTS_FILE, []);
+  const headers = ['Student ID', 'Student Name', 'System Password', 'Status'];
+  const rows = students.map(s => [
+    `"${s.studentId}"`,
+    `"${(s.name || '').replace(/"/g, '""')}"`,
+    `"${s.password}"`,
+    `"${s.status}"`
+  ]);
+
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="student_credentials_passwords.csv"');
+  res.send(csv);
+});
+
+// Teacher: Download Full Progress & Results Sheet (CSV)
+app.get('/api/teacher/export-progress', checkTeacherAuth, (req, res) => {
+  const students = readJSON(STUDENTS_FILE, []);
+  const headers = [
+    'Student ID',
+    'Student Name',
+    'System Password',
+    'Status',
+    'Lock Reason',
+    'Score',
+    'Total Questions',
+    'Percentage',
+    'Result',
+    'Violations Count',
+    'Time Spent (s)',
+    'Started At',
+    'Submitted At',
+    'Chain SHA-256 Hash'
+  ];
+
+  const rows = students.map(s => [
+    `"${s.studentId}"`,
+    `"${(s.name || '').replace(/"/g, '""')}"`,
+    `"${s.password}"`,
+    `"${s.status}"`,
+    `"${(s.lockReason || '').replace(/"/g, '""')}"`,
+    s.score !== null ? s.score : '',
+    s.totalQuestions !== null ? s.totalQuestions : '',
+    s.percentage !== null ? `${s.percentage}%` : '',
+    s.isPassed === true ? 'PASSED' : (s.isPassed === false ? 'FAILED' : ''),
+    (s.violations || []).length,
+    s.timeSpentSeconds !== null ? s.timeSpentSeconds : '',
+    `"${s.startedAt || ''}"`,
+    `"${s.submittedAt || ''}"`,
+    `"${s.verificationHash || ''}"`
+  ]);
+
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="forensic_students_progress_sheet.csv"');
+  res.send(csv);
+});
+
+// Teacher: Question Bank Management
+app.get('/api/teacher/questions', checkTeacherAuth, (req, res) => {
   const questions = readJSON(QUESTIONS_FILE, []);
   res.json({ success: true, count: questions.length, questions });
 });
 
-// Admin: Upload / Replace Question Bank
-app.post('/api/admin/questions', checkAdminAuth, (req, res) => {
-  const { questions, mode } = req.body; // mode: 'replace' | 'append'
+app.post('/api/teacher/questions', checkTeacherAuth, (req, res) => {
+  const { questions, mode } = req.body;
 
   if (!Array.isArray(questions) || questions.length === 0) {
-    return res.status(400).json({ success: false, message: 'Invalid question array.' });
+    return res.status(400).json({ success: false, message: 'Invalid question list.' });
   }
 
-  // Validate question schema
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
     if (!q.question || !Array.isArray(q.options) || q.options.length < 2 || !q.correctOption) {
       return res.status(400).json({
         success: false,
-        message: `Question #${i + 1} is invalid. Must contain question, options (>=2), and correctOption.`
+        message: `Question #${i + 1} is invalid. Needs question, options, and correctOption.`
       });
     }
   }
@@ -417,88 +748,55 @@ app.post('/api/admin/questions', checkAdminAuth, (req, res) => {
   }
 
   writeJSON(QUESTIONS_FILE, finalQuestions);
-  res.json({ success: true, message: `Successfully updated ${finalQuestions.length} questions.`, count: finalQuestions.length });
+  res.json({ success: true, message: `Question bank updated (${finalQuestions.length} questions).`, count: finalQuestions.length });
 });
 
-// Admin: Update Config
-app.post('/api/admin/config', checkAdminAuth, (req, res) => {
+// Teacher: Update Config
+app.post('/api/teacher/config', checkTeacherAuth, (req, res) => {
   const current = readJSON(CONFIG_FILE, {});
-  const updated = {
-    ...current,
-    ...req.body
-  };
+  const updated = { ...current, ...req.body };
   writeJSON(CONFIG_FILE, updated);
-  res.json({ success: true, message: 'Exam configuration updated.', config: updated });
+  res.json({ success: true, message: 'Settings saved.', config: updated });
 });
 
-// Admin: Export Submissions to CSV
-app.get('/api/admin/export', checkAdminAuth, (req, res) => {
-  const submissions = readJSON(SUBMISSIONS_FILE, []);
-
-  const headers = [
-    'Submission ID',
-    'Candidate Name',
-    'Candidate ID / Roll',
-    'Score',
-    'Total',
-    'Percentage',
-    'Result',
-    'Violations Count',
-    'Terminated For Violations',
-    'Time Spent (s)',
-    'Submitted At',
-    'SHA-256 Hash'
-  ];
-
-  const rows = submissions.map(s => [
-    `"${s.submissionId}"`,
-    `"${(s.candidate?.name || '').replace(/"/g, '""')}"`,
-    `"${(s.candidate?.id || '').replace(/"/g, '""')}"`,
-    s.score,
-    s.totalQuestions,
-    `${s.percentage}%`,
-    s.isPassed ? 'PASSED' : 'FAILED',
-    s.violationCount,
-    s.terminationReason ? `"${s.terminationReason}"` : 'NO',
-    s.timeSpentSeconds,
-    `"${s.submittedAt}"`,
-    `"${s.verificationHash}"`
-  ]);
-
-  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="forensic_quiz_submissions.csv"');
-  res.send(csvContent);
+// Public Exam Info
+app.get('/api/quiz/info', (req, res) => {
+  const config = readJSON(CONFIG_FILE, {});
+  const questions = readJSON(QUESTIONS_FILE, []);
+  res.json({
+    success: true,
+    examTitle: config.examTitle || 'Digital Forensics Assessment',
+    examCode: config.examCode || 'DFIR-BENCHMARK',
+    organization: config.organization || 'Digital Forensics Laboratory',
+    durationMinutes: config.durationMinutes || 15,
+    violationLimit: config.violationLimit || 3,
+    passingScorePercent: config.passingScorePercent || 70,
+    totalQuestions: questions.length
+  });
 });
 
-// Admin: Clear Submissions
-app.post('/api/admin/submissions/clear', checkAdminAuth, (req, res) => {
-  writeJSON(SUBMISSIONS_FILE, []);
-  res.json({ success: true, message: 'All candidate submission records cleared.' });
-});
-
-// Health check endpoint for Render
+// Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'HEALTHY', timestamp: new Date().toISOString() });
 });
 
+// Intelligent Port Binding with Fallback
 let DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
 
 function startServer(port) {
   const server = app.listen(port, () => {
     console.log(`\n======================================================`);
-    console.log(`[FORENSIC QUIZ CORE] Active on: http://localhost:${port}`);
-    console.log(`[ADMIN CONSOLE]      Clearance: http://localhost:${port}/admin.html`);
-    console.log(`[SECURE ENVIRONMENT] Zero-knowledge client answer architecture active.`);
+    console.log(`[FORENSIC QUIZ CORE] Student Portal: http://localhost:${port}`);
+    console.log(`[TEACHER PORTAL]     Command Desk:   http://localhost:${port}/teacher.html`);
+    console.log(`[ZERO-KNOWLEDGE]     Answer key secured in server memory.`);
+    console.log(`[THEME & AUDIO]      Clean White Lab Theme | Audio Muted`);
     console.log(`======================================================\n`);
   });
 
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.warn(`[PORT NOTICE] Port ${port} is currently in use by another process.`);
+      console.warn(`[PORT NOTICE] Port ${port} is occupied. Attempting fallback...`);
       const nextPort = port === 3000 ? 3030 : port + 1;
-      console.log(`[PORT NOTICE] Automatically attempting fallback to port ${nextPort}...`);
       startServer(nextPort);
     } else {
       console.error('[SERVER ERROR]', err);

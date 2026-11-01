@@ -1,36 +1,30 @@
 /**
- * EXAM CONTROLLER - CORE CLIENT ENGINE
- * Handles question state, timer countdown, responses, and submissions.
+ * EXAM CONTROLLER - PROGRESS RESTORATION & RESUME ENGINE
+ * Completely silent. Handles answers, timer, auto-sync, and lock states.
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Retrieve session data
   const rawSession = sessionStorage.getItem('forensic_active_session');
   if (!rawSession) {
-    alert('No active forensic examination session found. Redirecting to initialization.');
+    alert('No active session found. Redirecting to student login.');
     window.location.href = '/index.html';
     return;
   }
 
   const session = JSON.parse(rawSession);
   const questions = session.questions || [];
+  const student = session.student;
   const sessionId = session.sessionId;
 
-  if (questions.length === 0) {
-    alert('Assessment contains no questions. Contact administrator.');
-    window.location.href = '/index.html';
-    return;
-  }
-
-  // State
-  let currentIndex = 0;
-  const userAnswers = new Map(); // questionId -> optionId
-  const flaggedQuestions = new Set(); // Set of questionIds
+  // Restore State from Session / Server
+  let currentIndex = session.currentIndex || 0;
+  let remainingSeconds = session.remainingSeconds || (session.durationMinutes * 60);
+  const userAnswers = new Map(Object.entries(session.currentAnswers || {}));
+  const flaggedQuestions = new Set();
   let isSubmitting = false;
 
   // DOM Elements
   const examTitleEl = document.getElementById('examTitle');
-  const examCodeEl = document.getElementById('examCode');
   const candidateNameEl = document.getElementById('candidateName');
   const candidateIdEl = document.getElementById('candidateId');
   const timerDisplayEl = document.getElementById('timerDigits');
@@ -55,48 +49,72 @@ document.addEventListener('DOMContentLoaded', async () => {
   const answeredCountEl = document.getElementById('modalAnsweredCount');
   const remainingCountEl = document.getElementById('modalRemainingCount');
 
-  const audioToggleBtn = document.getElementById('audioToggleBtn');
-  const reenterFullscreenBtn = document.getElementById('reenterFullscreenBtn');
-  const terminationModal = document.getElementById('terminationModal');
-  const terminationReasonEl = document.getElementById('terminationReasonText');
+  const lockOverlay = document.getElementById('lockOverlay');
+  const lockReasonText = document.getElementById('lockReasonText');
 
-  // Populate Header HUD
+  // Populate Header
   if (examTitleEl) examTitleEl.textContent = session.examTitle || 'Forensic Assessment';
-  if (examCodeEl) examCodeEl.textContent = session.examCode || 'DFIR-BENCHMARK';
-  if (candidateNameEl) candidateNameEl.textContent = session.candidate.name;
-  if (candidateIdEl) candidateIdEl.textContent = session.candidate.id;
+  if (candidateNameEl) candidateNameEl.textContent = student.name;
+  if (candidateIdEl) candidateIdEl.textContent = student.studentId;
   if (totalQuestionsEl) totalQuestionsEl.textContent = questions.length;
 
-  // Audio Toggle
-  if (audioToggleBtn) {
-    audioToggleBtn.addEventListener('click', () => {
-      const isMuted = window.ForensicAudio.toggleMute();
-      audioToggleBtn.textContent = isMuted ? '🔇 AUDIO OFF' : '🔊 AUDIO ON';
-      audioToggleBtn.classList.toggle('active', !isMuted);
-    });
-    audioToggleBtn.textContent = window.ForensicAudio.isMuted ? '🔇 AUDIO OFF' : '🔊 AUDIO ON';
-  }
-
-  // Initialize Proctoring Shield
+  // Proctoring Shield
   const shield = new window.ProctoringShield({
+    studentId: student.studentId,
     sessionId: sessionId,
     violationLimit: session.violationLimit || 3,
-    onViolation: (violation) => {
-      updateViolationUI(violation.count, violation.max);
-      appendSecurityLog(violation.type, violation.details);
+    getStateCallback: () => ({
+      currentAnswers: Object.fromEntries(userAnswers),
+      currentIndex,
+      remainingSeconds
+    }),
+    onViolation: (v) => {
+      if (violationBadgeEl) {
+        violationBadgeEl.textContent = `VIOLATIONS: ${v.count}/${v.max}`;
+        if (v.count > 0) violationBadgeEl.className = 'badge badge-red';
+      }
     },
-    onTerminated: (reason) => {
-      handleSecurityTermination(reason);
+    onLocked: (reason) => {
+      showLockScreen(reason);
     }
   });
-  shield.setSession(sessionId, session.violationLimit || 3);
 
-  // Re-enter Fullscreen handler
-  if (reenterFullscreenBtn) {
-    reenterFullscreenBtn.addEventListener('click', async () => {
-      await shield.requestFullscreenLock();
-    });
+  shield.setSession(student.studentId, sessionId, session.violationLimit || 3);
+
+  function showLockScreen(reason) {
+    if (lockOverlay) {
+      if (lockReasonText) lockReasonText.textContent = reason || 'Session locked by supervisor.';
+      lockOverlay.style.display = 'flex';
+    }
   }
+
+  // Periodic Server Progress Sync
+  async function syncProgress() {
+    if (isSubmitting) return;
+    try {
+      await fetch('/api/student/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: student.studentId,
+          currentAnswers: Object.fromEntries(userAnswers),
+          currentIndex,
+          remainingSeconds
+        })
+      });
+
+      // Update local session storage
+      session.currentAnswers = Object.fromEntries(userAnswers);
+      session.currentIndex = currentIndex;
+      session.remainingSeconds = remainingSeconds;
+      sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
+    } catch (err) {
+      console.warn('Sync failed:', err);
+    }
+  }
+
+  // Sync every 8 seconds
+  const syncInterval = setInterval(syncProgress, 8000);
 
   // Build Matrix Palette
   function buildMatrix() {
@@ -106,10 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.className = 'matrix-btn';
       btn.textContent = idx + 1;
       btn.dataset.index = idx;
-      btn.addEventListener('click', () => {
-        if (window.ForensicAudio) window.ForensicAudio.playNav();
-        goToQuestion(idx);
-      });
+      btn.addEventListener('click', () => goToQuestion(idx));
       matrixGridEl.appendChild(btn);
     });
     updateMatrixState();
@@ -131,11 +146,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!q) return;
 
     if (questionNumEl) questionNumEl.textContent = currentIndex + 1;
-    if (artifactCategoryEl) artifactCategoryEl.textContent = q.category || 'General';
+    if (artifactCategoryEl) artifactCategoryEl.textContent = q.category || 'General Forensics';
     if (artifactIdEl) artifactIdEl.textContent = `ARTIFACT // ${q.id}`;
     if (questionPromptEl) questionPromptEl.textContent = q.question;
 
-    // Options
     optionsContainerEl.innerHTML = '';
     const selectedOption = userAnswers.get(q.id);
 
@@ -158,10 +172,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.appendChild(textSpan);
 
       card.addEventListener('click', () => {
-        if (window.ForensicAudio) window.ForensicAudio.playClick();
         userAnswers.set(q.id, opt.id);
         renderCurrentQuestion();
         updateMatrixState();
+        syncProgress();
       });
 
       optionsContainerEl.appendChild(card);
@@ -173,15 +187,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (currentIndex === questions.length - 1) {
         nextBtn.textContent = 'Review & Finish ➔';
       } else {
-        nextBtn.textContent = 'Next Artifact ➔';
+        nextBtn.textContent = 'Next Question ➔';
       }
     }
 
-    // Flag status
     if (flagBtn) {
       const isFlagged = flaggedQuestions.has(q.id);
       flagBtn.classList.toggle('btn-primary', isFlagged);
-      flagBtn.textContent = isFlagged ? '★ Artifact Flagged' : '☆ Mark for Review';
+      flagBtn.textContent = isFlagged ? '★ Flagged' : '☆ Mark for Review';
     }
 
     updateMatrixState();
@@ -191,23 +204,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (idx >= 0 && idx < questions.length) {
       currentIndex = idx;
       renderCurrentQuestion();
+      syncProgress();
     }
   }
 
-  // Navigation handlers
   if (prevBtn) {
     prevBtn.addEventListener('click', () => {
-      if (currentIndex > 0) {
-        if (window.ForensicAudio) window.ForensicAudio.playNav();
-        goToQuestion(currentIndex - 1);
-      }
+      if (currentIndex > 0) goToQuestion(currentIndex - 1);
     });
   }
 
   if (nextBtn) {
     nextBtn.addEventListener('click', () => {
       if (currentIndex < questions.length - 1) {
-        if (window.ForensicAudio) window.ForensicAudio.playNav();
         goToQuestion(currentIndex + 1);
       } else {
         openSubmitModal();
@@ -238,7 +247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (answeredCountEl) answeredCountEl.textContent = answeredCount;
     if (remainingCountEl) remainingCountEl.textContent = remainingCount;
-
     if (submitModal) submitModal.classList.add('active');
   }
 
@@ -251,115 +259,69 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (confirmSubmitBtn) {
     confirmSubmitBtn.addEventListener('click', () => {
       if (submitModal) submitModal.classList.remove('active');
-      submitExam(false);
+      submitExam();
     });
   }
 
-  // Server-Enforced Chronometer
-  const expiresAt = session.expiresAt;
+  // Timer Countdown
   const timerInterval = setInterval(() => {
-    const now = Date.now();
-    const remainingMs = Math.max(0, expiresAt - now);
-    const totalSeconds = Math.floor(remainingMs / 1000);
+    remainingSeconds = Math.max(0, remainingSeconds - 1);
 
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
     const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
     if (timerDisplayEl) {
       timerDisplayEl.textContent = formatted;
-
-      if (totalSeconds <= 120) {
+      if (remainingSeconds <= 120) {
         timerDisplayEl.className = 'timer-digits danger';
-      } else if (totalSeconds <= 300) {
+      } else if (remainingSeconds <= 300) {
         timerDisplayEl.className = 'timer-digits warning';
       } else {
         timerDisplayEl.className = 'timer-digits';
       }
     }
 
-    if (remainingMs <= 0) {
+    if (remainingSeconds <= 0) {
       clearInterval(timerInterval);
+      clearInterval(syncInterval);
       if (!isSubmitting) {
-        alert('Time limit expired. Automatically submitting exam.');
-        submitExam(true, 'TIME_EXPIRED');
+        alert('Time expired. Automatically submitting assessment.');
+        submitExam();
       }
     }
   }, 1000);
 
-  // Security UI updates
-  function updateViolationUI(count, max) {
-    if (violationBadgeEl) {
-      violationBadgeEl.textContent = `SECURITY VIOLATIONS: ${count}/${max}`;
-      if (count > 0) {
-        violationBadgeEl.className = 'badge badge-red';
-      }
-    }
-  }
-
-  function appendSecurityLog(type, details) {
-    const stream = document.getElementById('securityStream');
-    if (!stream) return;
-
-    const timeStr = new Date().toLocaleTimeString();
-    const entry = document.createElement('div');
-    entry.className = 'stream-entry violation';
-    entry.innerHTML = `<span class="stream-time">[${timeStr}]</span> <strong>[${type}]</strong>: ${details}`;
-    stream.prepend(entry);
-  }
-
-  function handleSecurityTermination(reason) {
-    if (isSubmitting) return;
-    shield.stop();
-    if (terminationModal) {
-      if (terminationReasonEl) terminationReasonEl.textContent = reason || 'Integrity threshold breached.';
-      terminationModal.classList.add('active');
-    }
-    // Auto submit compromised test after 3 seconds
-    setTimeout(() => {
-      submitExam(true, reason || 'EXCEEDED_SECURITY_VIOLATIONS');
-    }, 2500);
-  }
-
   // Submit Final Answers to Server
-  async function submitExam(autoSubmitted = false, terminationReason = null) {
+  async function submitExam() {
     if (isSubmitting) return;
     isSubmitting = true;
     shield.stop();
     clearInterval(timerInterval);
-
-    // Format answers array
-    const formattedAnswers = [];
-    userAnswers.forEach((selectedOption, questionId) => {
-      formattedAnswers.push({ questionId, selectedOption });
-    });
+    clearInterval(syncInterval);
 
     try {
-      const res = await fetch('/api/quiz/submit', {
+      const res = await fetch('/api/student/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId: sessionId,
-          answers: formattedAnswers,
-          autoSubmitted,
-          terminationReason
+          studentId: student.studentId,
+          answers: Object.fromEntries(userAnswers)
         })
       });
 
       const result = await res.json();
       if (result.success) {
-        if (window.ForensicAudio) window.ForensicAudio.playSuccess();
-        // Clear active session and store certified result
         sessionStorage.removeItem('forensic_active_session');
         sessionStorage.setItem('forensic_last_result', JSON.stringify(result.data));
         window.location.href = '/result.html';
       } else {
-        alert(`Submission Error: ${result.message}`);
+        alert(`Error: ${result.message}`);
         isSubmitting = false;
       }
     } catch (err) {
       console.error('Submission failed:', err);
-      alert('Network error submitting examination. Please notify examiner.');
+      alert('Network error submitting assessment.');
       isSubmitting = false;
     }
   }

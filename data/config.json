@@ -1,13 +1,14 @@
 {
-  "examTitle": "FORENSIC INVESTIGATOR QUALIFICATION BENCHMARK",
+  "examTitle": "DIGITAL FORENSICS QUALIFICATION BENCHMARK",
   "examCode": "CFI-704-DFIR",
-  "organization": "DIGITAL FORENSICS & INCIDENT RESPONSE ACADEMY",
+  "organization": "DEPARTMENT OF DIGITAL FORENSICS & CYBER INVESTIGATION",
   "durationMinutes": 15,
   "violationLimit": 3,
   "passingScorePercent": 70,
   "randomizeQuestions": true,
   "randomizeOptions": true,
-  "adminPasscode": "forensic@admin2026",
-  "strictFullscreen": true,
-  "blockDevtools": true
+  "teacherUsername": "examiner",
+  "teacherPasscode": "forensic@teacher2026",
+  "maxLoginAttempts": 5,
+  "lockoutDurationMinutes": 15
 }

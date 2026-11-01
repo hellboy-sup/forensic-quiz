@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Command Desk // Forensic Assessment</title>
+  <link rel="stylesheet" href="/css/forensic-theme.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .unlock-btn {
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s ease;
+    }
+    .unlock-btn:hover {
+      background: #dc2626;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BRUTE-FORCE PROTECTED TEACHER AUTH GATE -->
+  <div class="auth-gate" id="authGate">
+    <div class="hud-panel" style="max-width:420px; width:100%; padding:32px 28px;">
+      <div style="text-align:center; margin-bottom:20px;">
+        <span class="badge badge-blue">INSTRUCTOR ACCESS CLEARANCE</span>
+        <h2 style="font-size:1.3rem; margin-top:8px;">Teacher Command Desk</h2>
+        <p class="text-muted" style="font-size:0.8rem; margin-top:4px;">Secure login with brute-force rate limiting.</p>
+      </div>
+
+      <div id="loginAlert" style="display:none; padding:12px; border-radius:var(--radius-sm); font-size:0.82rem; margin-bottom:16px;"></div>
+
+      <form id="teacherLoginForm" onsubmit="return false;">
+        <div class="form-group">
+          <label class="form-label" for="teacherUser">Username</label>
+          <input type="text" id="teacherUser" class="form-control" value="examiner" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="teacherPass">Passcode</label>
+          <input type="password" id="teacherPass" class="form-control" placeholder="forensic@teacher2026" required autocomplete="current-password" autofocus>
+        </div>
+
+        <button type="button" id="loginBtn" class="btn btn-primary" style="width:100%; min-height:44px; margin-top:6px;">
+          AUTHORIZE & ENTER ➔
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TEACHER HEADER -->
+  <header class="admin-header">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span class="status-dot"></span>
+      <div>
+        <h2 style="font-size:1.1rem; color:var(--text-primary);">TEACHER COMMAND DESK</h2>
+        <div style="font-size:0.75rem; color:var(--text-muted);">Real-Time Student Progress & Proctoring Control</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="live-badge">
+        <span class="pulse-dot"></span> LIVE MONITOR
+      </span>
+      <a href="/index.html" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; min-height:34px;">
+        Student Portal ↗
+      </a>
+      <button id="logoutBtn" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; min-height:34px; color:var(--accent-red);">
+        Logout 🔒
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="admin-container">
+    
+    <!-- KPI SUMMARY CARDS -->
+    <div class="kpi-grid">
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">ENROLLED STUDENTS</div>
+        <div class="kpi-value" id="kpiTotalStudents">0</div>
+      </div>
+
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">CURRENTLY IN PROGRESS</div>
+        <div class="kpi-value" style="color:var(--accent-primary);" id="kpiInProgress">0</div>
+      </div>
+
+      <div class="hud-panel kpi-card" style="border-color:#fecaca;">
+        <div class="kpi-title" style="color:#b91c1c;">LOCKED / NEED UNLOCK</div>
+        <div class="kpi-value" style="color:#b91c1c;" id="kpiLocked">0</div>
+      </div>
+
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">COMPLETED / SUBMITTED</div>
+        <div class="kpi-value" style="color:var(--accent-green);" id="kpiSubmitted">0</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="admin-tabs">
+      <button class="tab-btn active" data-tab="liveMonitorTab">📊 Live Student Progress Monitor</button>
+      <button class="tab-btn" data-tab="studentsTab">👥 Student Enrollment & CSV</button>
+      <button class="tab-btn" data-tab="questionsTab">💾 Question Bank</button>
+      <button class="tab-btn" data-tab="settingsTab">⚙️ Assessment Settings</button>
+    </div>
+
+    <!-- TAB 1: LIVE STUDENT PROGRESS MONITOR -->
+    <section class="tab-pane active" id="liveMonitorTab">
+      <div class="hud-panel" style="padding:20px;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:1.1rem;">Live Candidate Examination Matrix</h3>
+            <p class="text-muted" style="font-size:0.8rem;">Auto-updates every 3s. Shows real-time question progress, locks, and violations.</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="downloadProgressSheetBtn" class="btn btn-primary" style="font-size:0.8rem;">
+              📥 Download Progress Sheet (CSV)
+            </button>
+            <button id="downloadCredsBtnTop" class="btn btn-secondary" style="font-size:0.8rem;">
+              🔑 Download Student Passwords (CSV)
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="forensic-table">
+            <thead>
+              <tr>
+                <th>STUDENT ROLL NO</th>
+                <th>STUDENT NAME</th>
+                <th>SYSTEM PASSWORD</th>
+                <th>CURRENT STATUS</th>
+                <th>PROGRESS</th>
+                <th>TIME LEFT</th>
+                <th>VIOLATIONS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="studentProgressTableBody">
+              <!-- Dynamically populated every 3 seconds -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: STUDENT ENROLLMENT & CSV GENERATOR -->
+    <section class="tab-pane" id="studentsTab">
+      <div class="hud-panel" style="padding:24px; margin-bottom:20px;">
+        <h3 style="font-size:1.1rem; margin-bottom:6px;">Upload Student Roster (CSV)</h3>
+        <p class="text-muted" style="font-size:0.8rem; margin-bottom:16px;">
+          Upload or paste your student list. The system will automatically generate a secure, unique password for each student.
+        </p>
+
+        <!-- Dropzone -->
+        <div class="upload-dropzone" id="studentDropzone">
+          <input type="file" id="studentFileInput" accept=".csv,.txt" style="display:none;">
+          <div style="font-size:2rem; margin-bottom:8px;">📄</div>
+          <div style="font-weight:600; font-size:0.95rem;">Drag & Drop student CSV file here</div>
+          <div class="text-muted" style="font-size:0.8rem;">Format: <code>StudentID, Student Name</code></div>
+        </div>
+
+        <div>
+          <label class="form-label">Or Paste CSV rows directly:</label>
+          <textarea id="studentCsvTextarea" class="json-textarea" style="height:160px;" placeholder="DF-2026-001, Sarah Connor&#10;DF-2026-002, Alex Mercer&#10;DF-2026-003, James Gordon"></textarea>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; gap:16px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; cursor:pointer;">
+                <input type="radio" name="csvMode" value="replace" checked>
+                <span>Replace Existing Roster</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; cursor:pointer;">
+                <input type="radio" name="csvMode" value="append">
+                <span>Append to Existing Roster</span>
+              </label>
+            </div>
+            <button id="importCsvBtn" class="btn btn-primary">GENERATE PASSWORDS & SAVE ROSTER ➔</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: QUESTION BANK -->
+    <section class="tab-pane" id="questionsTab">
+      <div class="hud-panel" style="padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:1.1rem;">Question Bank (<span id="qCountBadge">0</span> Questions)</h3>
+            <p class="text-muted" style="font-size:0.8rem;">Answer keys are stored strictly on the server and never sent to students.</p>
+          </div>
+          <button id="saveQuestionsBtn" class="btn btn-primary" style="font-size:0.82rem;">Save Question Bank ➔</button>
+        </div>
+
+        <textarea id="rawQuestionEditor" class="json-textarea" spellcheck="false" style="height:320px;"></textarea>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS -->
+    <section class="tab-pane" id="settingsTab">
+      <div class="hud-panel" style="max-width:600px; padding:24px;">
+        <h3 style="font-size:1.1rem; margin-bottom:18px;">Assessment Parameters</h3>
+        
+        <form id="settingsForm" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label">Exam Title</label>
+            <input type="text" id="cfgTitle" class="form-control" required>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+              <label class="form-label">Duration (Minutes)</label>
+              <input type="number" id="cfgDuration" class="form-control" min="1" max="180" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Violations Allowed</label>
+              <input type="number" id="cfgViolations" class="form-control" min="1" max="10" required>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+              <label class="form-label">Passing Score (%)</label>
+              <input type="number" id="cfgPassMark" class="form-control" min="10" max="100" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Update Teacher Passcode</label>
+              <input type="password" id="cfgPasscode" class="form-control" placeholder="Leave blank to keep current">
+            </div>
+          </div>
+
+          <button type="button" id="saveSettingsBtn" class="btn btn-primary" style="margin-top:8px;">
+            SAVE SETTINGS ➔
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/js/teacher.js"></script>
+</body>
+</html>

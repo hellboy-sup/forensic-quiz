@@ -130,3 +130,4 @@
     "explanation": "Event ID 4688 logs process creation (including parent process ID and command-line arguments when command line auditing is enabled). 4624 is logon, 4672 is special privileges assigned, and 1102 is audit log cleared."
   }
 ]
+

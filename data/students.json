@@ -1,0 +1,45 @@
+[
+  {
+    "studentId": "DF-2026-101",
+    "name": "Alice Walker",
+    "password": "SEC-8750-A",
+    "status": "SUBMITTED",
+    "lockReason": null,
+    "currentAnswers": {
+      "DF-102": "B",
+      "DF-103": "B",
+      "DF-101": "B"
+    },
+    "currentIndex": 1,
+    "remainingSeconds": 840,
+    "violations": [],
+    "score": 3,
+    "totalQuestions": 10,
+    "percentage": 30,
+    "isPassed": false,
+    "startedAt": "2026-11-01T01:29:39.247Z",
+    "submittedAt": "2026-11-01T01:29:39.381Z",
+    "timeSpentSeconds": 1,
+    "verificationHash": "FB89479D76BEDB80ABEB0EDBDD7000272FA6B7C5EEDF26779FCAB5E59DD725C8",
+    "lockedAt": null
+  },
+  {
+    "studentId": "DF-2026-102",
+    "name": "Bob Martinez",
+    "password": "SEC-6211-9",
+    "status": "NOT_STARTED",
+    "lockReason": null,
+    "currentAnswers": {},
+    "currentIndex": 0,
+    "remainingSeconds": null,
+    "violations": [],
+    "score": null,
+    "totalQuestions": null,
+    "percentage": null,
+    "isPassed": null,
+    "startedAt": null,
+    "submittedAt": null,
+    "timeSpentSeconds": null,
+    "verificationHash": null
+  }
+]

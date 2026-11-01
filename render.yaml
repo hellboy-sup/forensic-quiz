@@ -8,4 +8,7 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-
+      - key: TEACHER_USERNAME
+        value: examiner
+      - key: TEACHER_PASSWORD
+        sync: false

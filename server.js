@@ -123,8 +123,8 @@ app.post('/api/teacher/login', (req, res) => {
     failureRecord.lockedUntil = null;
   }
 
-  const expectedUsername = config.teacherUsername || 'examiner';
-  const expectedPasscode = config.teacherPasscode || 'forensic@teacher2026';
+  const expectedUsername = process.env.TEACHER_USERNAME || config.teacherUsername || 'examiner';
+  const expectedPasscode = process.env.TEACHER_PASSWORD || config.teacherPasscode || 'forensic@teacher2026';
 
   // Constant-time password check simulation
   const isUsernameMatch = (username || '').trim().toLowerCase() === expectedUsername.toLowerCase();

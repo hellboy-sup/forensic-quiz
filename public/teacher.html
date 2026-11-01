@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,6 +20,7 @@
       color: #047857;
       border: 1px solid #a7f3d0;
     }
+
     .pulse-dot {
       width: 7px;
       height: 7px;
@@ -26,11 +28,24 @@
       background: #10b981;
       animation: pulse 1.5s infinite;
     }
+
     @keyframes pulse {
-      0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-      100% { opacity: 1; transform: scale(1); }
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(0.85);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
+
     .unlock-btn {
       background: #ef4444;
       color: #ffffff;
@@ -45,11 +60,13 @@
       gap: 5px;
       transition: background 0.15s ease;
     }
+
     .unlock-btn:hover {
       background: #dc2626;
     }
   </style>
 </head>
+
 <body>
 
   <!-- BRUTE-FORCE PROTECTED TEACHER AUTH GATE -->
@@ -61,7 +78,9 @@
         <p class="text-muted" style="font-size:0.8rem; margin-top:4px;">Secure login with brute-force rate limiting.</p>
       </div>
 
-      <div id="loginAlert" style="display:none; padding:12px; border-radius:var(--radius-sm); font-size:0.82rem; margin-bottom:16px;"></div>
+      <div id="loginAlert"
+        style="display:none; padding:12px; border-radius:var(--radius-sm); font-size:0.82rem; margin-bottom:16px;">
+      </div>
 
       <form id="teacherLoginForm" onsubmit="return false;">
         <div class="form-group">
@@ -71,10 +90,12 @@
 
         <div class="form-group">
           <label class="form-label" for="teacherPass">Passcode</label>
-          <input type="password" id="teacherPass" class="form-control" placeholder="forensic@teacher2026" required autocomplete="current-password" autofocus>
+          <input type="password" id="teacherPass" class="form-control" placeholder="Enter instructor passcode" required
+            autocomplete="current-password" autofocus>
         </div>
 
-        <button type="button" id="loginBtn" class="btn btn-primary" style="width:100%; min-height:44px; margin-top:6px;">
+        <button type="button" id="loginBtn" class="btn btn-primary"
+          style="width:100%; min-height:44px; margin-top:6px;">
           AUTHORIZE & ENTER ➔
         </button>
       </form>
@@ -97,7 +118,8 @@
       <a href="/index.html" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; min-height:34px;">
         Student Portal ↗
       </a>
-      <button id="logoutBtn" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; min-height:34px; color:var(--accent-red);">
+      <button id="logoutBtn" class="btn btn-secondary"
+        style="font-size:0.75rem; padding:6px 12px; min-height:34px; color:var(--accent-red);">
         Logout 🔒
       </button>
     </div>
@@ -105,11 +127,13 @@
 
   <!-- MAIN WORKSPACE -->
   <main class="admin-container">
-    
+
     <!-- MASTER EXAM CONTROL BAR -->
-    <div class="hud-panel" style="padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+    <div class="hud-panel"
+      style="padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
       <div>
-        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">
+        <div
+          style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">
           EXAMINATION MASTER CONTROL
         </div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -122,7 +146,8 @@
         </div>
       </div>
       <div>
-        <button id="toggleExamLiveBtn" class="btn btn-success" style="padding:10px 22px; font-size:0.9rem; font-weight:700;">
+        <button id="toggleExamLiveBtn" class="btn btn-success"
+          style="padding:10px 22px; font-size:0.9rem; font-weight:700;">
           ▶️ START EXAMINATION (ALLOW LOGINS)
         </button>
       </div>
@@ -162,11 +187,13 @@
     <!-- TAB 1: LIVE STUDENT PROGRESS MONITOR -->
     <section class="tab-pane active" id="liveMonitorTab">
       <div class="hud-panel" style="padding:20px;">
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
           <div>
             <h3 style="font-size:1.1rem;">Live Candidate Examination Matrix</h3>
-            <p class="text-muted" style="font-size:0.8rem;">Auto-updates every 3s. Shows real-time question progress, locks, and violations.</p>
+            <p class="text-muted" style="font-size:0.8rem;">Auto-updates every 3s. Shows real-time question progress,
+              locks, and violations.</p>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button id="downloadProgressSheetBtn" class="btn btn-primary" style="font-size:0.8rem;">
@@ -206,7 +233,8 @@
       <div class="hud-panel" style="padding:24px; margin-bottom:20px;">
         <h3 style="font-size:1.1rem; margin-bottom:6px;">Upload Student Roster (CSV)</h3>
         <p class="text-muted" style="font-size:0.8rem; margin-bottom:16px;">
-          Upload or paste your student list. The system will automatically generate a secure, unique password for each student.
+          Upload or paste your student list. The system will automatically generate a secure, unique password for each
+          student.
         </p>
 
         <!-- Dropzone -->
@@ -219,9 +247,11 @@
 
         <div>
           <label class="form-label">Or Paste CSV rows directly:</label>
-          <textarea id="studentCsvTextarea" class="json-textarea" style="height:160px;" placeholder="DF-2026-001, Sarah Connor&#10;DF-2026-002, Alex Mercer&#10;DF-2026-003, James Gordon"></textarea>
-          
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
+          <textarea id="studentCsvTextarea" class="json-textarea" style="height:160px;"
+            placeholder="DF-2026-001, Sarah Connor&#10;DF-2026-002, Alex Mercer&#10;DF-2026-003, James Gordon"></textarea>
+
+          <div
+            style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
             <div style="display:flex; gap:16px;">
               <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; cursor:pointer;">
                 <input type="radio" name="csvMode" value="replace" checked>
@@ -241,10 +271,12 @@
     <!-- TAB 3: QUESTION BANK -->
     <section class="tab-pane" id="questionsTab">
       <div class="hud-panel" style="padding:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
           <div>
             <h3 style="font-size:1.1rem;">Question Bank (<span id="qCountBadge">0</span> Questions)</h3>
-            <p class="text-muted" style="font-size:0.8rem;">Answer keys are stored strictly on the server and never sent to students.</p>
+            <p class="text-muted" style="font-size:0.8rem;">Answer keys are stored strictly on the server and never sent
+              to students.</p>
           </div>
           <button id="saveQuestionsBtn" class="btn btn-primary" style="font-size:0.82rem;">Save Question Bank ➔</button>
         </div>
@@ -257,7 +289,7 @@
     <section class="tab-pane" id="settingsTab">
       <div class="hud-panel" style="max-width:600px; padding:24px;">
         <h3 style="font-size:1.1rem; margin-bottom:18px;">Assessment Parameters</h3>
-        
+
         <form id="settingsForm" onsubmit="return false;">
           <div class="form-group">
             <label class="form-label">Exam Title</label>
@@ -297,5 +329,5 @@
 
   <script src="/js/teacher.js"></script>
 </body>
-</html>
 
+</html>

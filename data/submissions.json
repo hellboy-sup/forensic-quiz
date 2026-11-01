@@ -1,5 +1,40 @@
 [
   {
+    "submissionId": "SUB-3509E1AF",
+    "candidate": {
+      "name": "Bob Martinez",
+      "id": "DF-2026-102"
+    },
+    "examTitle": "DIGITAL FORENSICS QUALIFICATION BENCHMARK",
+    "examCode": "CFI-704-DFIR",
+    "score": 0,
+    "totalQuestions": 10,
+    "percentage": 0,
+    "isPassed": false,
+    "violations": [
+      {
+        "type": "WINDOW_BLUR",
+        "details": "Window focus lost.",
+        "timestamp": "2026-11-01T01:33:29.686Z"
+      },
+      {
+        "type": "TAB_SWITCH_AWAY",
+        "details": "Application focus lost: Candidate switched tabs or minimized.",
+        "timestamp": "2026-11-01T01:33:33.302Z"
+      },
+      {
+        "type": "WINDOW_BLUR",
+        "details": "Window focus lost.",
+        "timestamp": "2026-11-01T01:33:33.615Z"
+      }
+    ],
+    "violationCount": 3,
+    "startedAt": "2026-11-01T01:33:28.191Z",
+    "submittedAt": "2026-11-01T01:34:26.137Z",
+    "timeSpentSeconds": 58,
+    "verificationHash": "A051B0E8F102670B3D2DC2F667C361B817B5363742C9365D00606E29409AFC19"
+  },
+  {
     "submissionId": "SUB-5765D52B",
     "candidate": {
       "name": "Alice Walker",

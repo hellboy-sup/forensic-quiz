@@ -674,6 +674,36 @@ app.post('/api/teacher/students/reset-exam', checkTeacherAuth, (req, res) => {
   });
 });
 
+// Teacher: Remove a Student from Roster
+app.post('/api/teacher/students/delete', checkTeacherAuth, (req, res) => {
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const studentIndex = students.findIndex(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
+
+  if (studentIndex === -1) {
+    return res.status(404).json({ success: false, message: 'Student not found.' });
+  }
+
+  const removedStudent = students.splice(studentIndex, 1)[0];
+  writeJSON(STUDENTS_FILE, students);
+
+  // Clear from active sessions
+  activeStudentSessions.delete(removedStudent.studentId);
+
+  // Remove previous submission record if any
+  const submissions = readJSON(SUBMISSIONS_FILE, []);
+  const filteredSubmissions = submissions.filter(s => s.candidate?.id?.toLowerCase() !== removedStudent.studentId.toLowerCase());
+  writeJSON(SUBMISSIONS_FILE, filteredSubmissions);
+
+  console.log(`[STUDENT REMOVED] Teacher removed student ${removedStudent.name} (${removedStudent.studentId})`);
+  res.json({
+    success: true,
+    message: `Student ${removedStudent.name} (${removedStudent.studentId}) has been removed from the roster.`
+  });
+});
+
 // Teacher: Import Students from CSV / Text with Auto System Password Generation
 app.post('/api/teacher/students/import-csv', checkTeacherAuth, (req, res) => {
   const { csvText, mode } = req.body; // mode: 'replace' | 'append'

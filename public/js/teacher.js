@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${s.status === 'LOCKED' ? `<button class="unlock-btn" onclick="window.unlockStudent('${s.studentId}')" title="Unlock locked account">🔓 Unlock</button>` : ''}
           <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; min-height:28px;" onclick="window.resetStudentExam('${s.studentId}', '${s.name.replace(/'/g, "\\'")}')" title="Reset exam to fresh state">🔄 Reset Exam</button>
           <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; min-height:28px;" onclick="window.resetStudentPassword('${s.studentId}', '${s.name.replace(/'/g, "\\'")}')" title="Generate new password">🔑 Reset Pass</button>
+          <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; min-height:28px; color:#b91c1c; border-color:#fecaca;" onclick="window.removeStudent('${s.studentId}', '${s.name.replace(/'/g, "\\'")}')" title="Permanently remove student from roster">🗑️ Remove</button>
         </div>
       `;
 
@@ -364,6 +365,31 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       alert('Network error resetting password.');
+    }
+  };
+
+  // Global Remove Student Handler
+  window.removeStudent = async function(studentId, studentName) {
+    if (!confirm(`⚠️ PERMANENTLY REMOVE ${studentName} (${studentId}) from the student roster?\n\nThis will delete their credentials, exam status, and submission records.`)) return;
+
+    try {
+      const res = await fetch('/api/teacher/students/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-teacher-token': teacherToken
+        },
+        body: JSON.stringify({ studentId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchLiveProgress();
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (err) {
+      alert('Network error removing student.');
     }
   };
 

@@ -1,24 +1,5 @@
 [
   {
-    "submissionId": "SUB-4DBEDD10",
-    "candidate": {
-      "name": "Supratim",
-      "id": "1234"
-    },
-    "examTitle": "DIGITAL FORENSICS",
-    "examCode": "CFI-704-DFIR",
-    "score": 1,
-    "totalQuestions": 25,
-    "percentage": 4,
-    "isPassed": false,
-    "violations": [],
-    "violationCount": 0,
-    "startedAt": "2026-11-01T18:41:46.538Z",
-    "submittedAt": "2026-11-01T18:54:42.142Z",
-    "timeSpentSeconds": 776,
-    "verificationHash": "A07650546BA17CE018F690053A4D303D96B4DBDD9033B905591933858DB9810B"
-  },
-  {
     "submissionId": "SUB-443576B5",
     "candidate": {
       "name": "Jean Gray",

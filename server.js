@@ -5,7 +5,6 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
-const PORT = process.env.PORT || 3030;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -484,8 +483,27 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'HEALTHY', timestamp: new Date().toISOString() });
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`[FORENSIC QUIZ CORE] Server active on port ${PORT}`);
-  console.log(`[SECURE ENVIRONMENT] Zero-knowledge client answer architecture enabled.`);
-});
+let DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
+
+function startServer(port) {
+  const server = app.listen(port, () => {
+    console.log(`\n======================================================`);
+    console.log(`[FORENSIC QUIZ CORE] Active on: http://localhost:${port}`);
+    console.log(`[ADMIN CONSOLE]      Clearance: http://localhost:${port}/admin.html`);
+    console.log(`[SECURE ENVIRONMENT] Zero-knowledge client answer architecture active.`);
+    console.log(`======================================================\n`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[PORT NOTICE] Port ${port} is currently in use by another process.`);
+      const nextPort = port === 3000 ? 3030 : port + 1;
+      console.log(`[PORT NOTICE] Automatically attempting fallback to port ${nextPort}...`);
+      startServer(nextPort);
+    } else {
+      console.error('[SERVER ERROR]', err);
+    }
+  });
+}
+
+startServer(DEFAULT_PORT);

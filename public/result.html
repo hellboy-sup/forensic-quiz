@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forensic Examination Report // Official Certified Dossier</title>
+  <link rel="stylesheet" href="/css/forensic-theme.css">
+  <style>
+    .result-wrapper {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+    }
+    .score-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px;
+      background: rgba(0, 0, 0, 0.4);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .score-circle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(0, 240, 255, 0.05);
+      border: 3px solid var(--accent-cyan);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
+    }
+    .score-circle.failed {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 25px rgba(255, 51, 102, 0.3);
+    }
+    .score-percent {
+      font-family: var(--font-mono);
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .score-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    .category-bar-row {
+      margin-bottom: 16px;
+    }
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+    }
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00f0ff, #00ff9d);
+      border-radius: 4px;
+      transition: width 1s ease;
+    }
+    .review-item {
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+    .review-item.correct {
+      border-left: 4px solid var(--accent-green);
+    }
+    .review-item.incorrect {
+      border-left: 4px solid var(--accent-red);
+    }
+    .hash-box {
+      background: #04070c;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--accent-cyan);
+      word-break: break-all;
+    }
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      body::before { display: none !important; }
+      .no-print { display: none !important; }
+      .hud-panel { background: #fff !important; border: 1px solid #ccc !important; box-shadow: none !important; color: #000 !important; }
+      h1, h2, h3, .score-percent, .mono { color: #000 !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="result-wrapper">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;" class="no-print">
+      <a href="/index.html" class="btn btn-secondary">◀ Return to Terminal Home</a>
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Print / Save Official Dossier</button>
+    </div>
+
+    <div class="hud-panel hud-corner">
+      
+      <!-- Report Header -->
+      <div class="score-banner">
+        <div>
+          <span class="badge badge-cyan" id="submissionIdBadge">SUB-00000000</span>
+          <h1 style="font-size:1.8rem; margin-top:8px;" id="certTitle">Forensic Examination Dossier</h1>
+          <div class="mono text-muted" style="font-size:0.85rem; margin-top:6px;">
+            Candidate: <strong class="cyan" id="candidateName">--</strong> | ID: <span id="candidateId">--</span>
+          </div>
+          <div class="mono text-muted" style="font-size:0.75rem; margin-top:4px;" id="timestampText">
+            Timestamp: --
+          </div>
+        </div>
+
+        <div id="scoreCircleContainer" class="score-circle">
+          <div class="score-percent cyan" id="scorePercent">0%</div>
+          <div class="score-sub" id="scoreVerdict">PASSED</div>
+        </div>
+      </div>
+
+      <div style="padding: 32px;">
+        
+        <!-- Summary Metric Badges -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:32px;">
+          <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+            <div class="mono text-muted" style="font-size:0.75rem;">FINAL SCORE</div>
+            <div class="mono cyan" style="font-size:1.3rem; font-weight:700;" id="scoreSummary">0 / 0</div>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+            <div class="mono text-muted" style="font-size:0.75rem;">TIME ELAPSED</div>
+            <div class="mono" style="font-size:1.3rem; font-weight:700;" id="timeElapsed">0m 0s</div>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+            <div class="mono text-muted" style="font-size:0.75rem;">SECURITY VIOLATIONS</div>
+            <div class="mono green" style="font-size:1.3rem; font-weight:700;" id="violationCount">0</div>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+            <div class="mono text-muted" style="font-size:0.75rem;">CHAIN OF CUSTODY</div>
+            <div class="mono green" style="font-size:1.3rem; font-weight:700;" id="integrityStatus">VERIFIED</div>
+          </div>
+        </div>
+
+        <!-- Chain of Custody Cryptographic Hash -->
+        <div style="margin-bottom:32px;">
+          <div class="mono text-muted" style="font-size:0.75rem; margin-bottom:6px;">
+            CRYPTOGRAPHIC CHAIN-OF-CUSTODY AUDIT SEAL (SHA-256)
+          </div>
+          <div class="hash-box" id="verificationHash">
+            ----------------------------------------------------------------
+          </div>
+        </div>
+
+        <!-- Category Proficiency Breakdown -->
+        <h3 class="cyan mono" style="font-size:1rem; margin-bottom:16px;">
+          ▶ INVESTIGATION DOMAIN PROFICIENCY
+        </h3>
+        <div id="categoryBarsContainer" style="margin-bottom:36px;">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Question Review Dossier (Now unlocked after submission) -->
+        <h3 class="cyan mono" style="font-size:1rem; margin-bottom:16px;">
+          ▶ UNLOCKED EVIDENCE & ARTIFACT ANALYSIS
+        </h3>
+        <div id="questionReviewList">
+          <!-- Populated dynamically -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const rawData = sessionStorage.getItem('forensic_last_result');
+      if (!rawData) {
+        alert('No examination report found in session. Returning to homepage.');
+        window.location.href = '/index.html';
+        return;
+      }
+
+      const report = JSON.parse(rawData);
+
+      // Populate Header
+      document.getElementById('submissionIdBadge').textContent = report.submissionId || 'SUB-CERTIFIED';
+      document.getElementById('candidateName').textContent = report.candidate?.name || '--';
+      document.getElementById('candidateId').textContent = report.candidate?.id || '--';
+      document.getElementById('timestampText').textContent = `Completed: ${new Date().toLocaleString()}`;
+
+      // Score & Status
+      const isPassed = report.isPassed;
+      const scoreCircle = document.getElementById('scoreCircleContainer');
+      const scoreVerdict = document.getElementById('scoreVerdict');
+      const scorePercent = document.getElementById('scorePercent');
+
+      scorePercent.textContent = `${report.percentage}%`;
+      if (isPassed) {
+        scoreVerdict.textContent = 'QUALIFIED';
+        scoreVerdict.className = 'score-sub green';
+      } else {
+        scoreVerdict.textContent = report.terminationReason ? 'DISQUALIFIED' : 'NOT QUALIFIED';
+        scoreVerdict.className = 'score-sub red';
+        scoreCircle.classList.add('failed');
+        scorePercent.className = 'score-percent red';
+      }
+
+      // Summary
+      document.getElementById('scoreSummary').textContent = `${report.score} / ${report.totalQuestions}`;
+      
+      const mins = Math.floor(report.timeSpentSeconds / 60);
+      const secs = report.timeSpentSeconds % 60;
+      document.getElementById('timeElapsed').textContent = `${mins}m ${secs}s`;
+
+      const vCount = report.violations ? report.violations.length : 0;
+      const vEl = document.getElementById('violationCount');
+      vEl.textContent = vCount;
+      if (vCount > 0) vEl.className = 'mono red';
+
+      const integrityEl = document.getElementById('integrityStatus');
+      if (report.terminationReason) {
+        integrityEl.textContent = 'COMPROMISED';
+        integrityEl.className = 'mono red';
+      } else {
+        integrityEl.textContent = 'AUTHENTIC';
+        integrityEl.className = 'mono green';
+      }
+
+      document.getElementById('verificationHash').textContent = report.verificationHash || 'VERIFICATION_HASH_PENDING';
+
+      // Category Proficiency
+      const catContainer = document.getElementById('categoryBarsContainer');
+      catContainer.innerHTML = '';
+      if (report.categoryStats) {
+        Object.keys(report.categoryStats).forEach(cat => {
+          const stat = report.categoryStats[cat];
+          const pct = Math.round((stat.correct / stat.total) * 100);
+
+          const row = document.createElement('div');
+          row.className = 'category-bar-row';
+          row.innerHTML = `
+            <div class="bar-label">
+              <span>${cat}</span>
+              <span class="cyan">${stat.correct}/${stat.total} (${pct}%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width: ${pct}%;"></div>
+            </div>
+          `;
+          catContainer.appendChild(row);
+        });
+      }
+
+      // Question Review List
+      const reviewList = document.getElementById('questionReviewList');
+      reviewList.innerHTML = '';
+      if (report.questionResults) {
+        report.questionResults.forEach((q, idx) => {
+          const item = document.createElement('div');
+          item.className = `review-item ${q.isCorrect ? 'correct' : 'incorrect'}`;
+
+          const studentOptionObj = q.options.find(o => o.id === q.studentChoice);
+          const correctOptionObj = q.options.find(o => o.id === q.correctOption);
+
+          item.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+              <span class="badge ${q.isCorrect ? 'badge-green' : 'badge-red'}">
+                ${q.isCorrect ? '✓ CORRECT VERIFICATION' : '✗ INCORRECT / UNANSWERED'}
+              </span>
+              <span class="mono text-muted" style="font-size:0.75rem;">ARTIFACT #${idx + 1} (${q.category || 'General'})</span>
+            </div>
+            <div style="font-weight:600; margin-bottom:12px; font-size:0.95rem;">
+              ${q.question}
+            </div>
+            <div style="font-family:var(--font-mono); font-size:0.85rem; margin-bottom:10px;">
+              <div style="color:${q.isCorrect ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                Your Selection: [${q.studentChoice || 'None'}] ${studentOptionObj ? studentOptionObj.text : 'No option chosen'}
+              </div>
+              ${!q.isCorrect ? `
+                <div style="color:var(--accent-green); margin-top:4px;">
+                  Correct Answer: [${q.correctOption}] ${correctOptionObj ? correctOptionObj.text : ''}
+                </div>
+              ` : ''}
+            </div>
+            <div style="background:rgba(0,0,0,0.4); padding:10px 14px; border-radius:var(--radius-sm); font-size:0.8rem; color:var(--text-secondary); border-left:2px solid var(--accent-cyan);">
+              <strong class="cyan">EXAMINER DEBRIEF:</strong> ${q.explanation}
+            </div>
+          `;
+          reviewList.appendChild(item);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

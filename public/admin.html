@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forensic Assessment // Examiner Admin Console</title>
+  <link rel="stylesheet" href="/css/forensic-theme.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <!-- PASSCODE AUTH GATE -->
+  <div class="auth-gate" id="authGate">
+    <div class="hud-panel hud-corner" style="max-width:440px; width:100%; padding:36px; text-align:center;">
+      <span class="badge badge-cyan" style="margin-bottom:16px;">EXAMINER COMMAND AUTHORIZATION</span>
+      <h2 style="margin-bottom:8px; font-size:1.3rem;">Forensic Admin Terminal</h2>
+      <p class="text-secondary mono" style="font-size:0.8rem; margin-bottom:24px;">Enter administrative clearance passcode to manage question sets and candidate dossiers.</p>
+      
+      <div class="form-group" style="text-align:left;">
+        <label class="form-label">Passcode</label>
+        <input type="password" id="passcodeInput" class="form-control" placeholder="forensic@admin2026" autofocus>
+      </div>
+
+      <button type="button" id="loginBtn" class="btn btn-primary" style="width:100%; padding:12px;">
+        AUTHORIZE & ACCESS ➔
+      </button>
+      <div id="loginError" class="mono red" style="font-size:0.8rem; margin-top:12px; display:none;">
+        Access Denied: Invalid Passcode.
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN HEADER -->
+  <header class="admin-header">
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="status-dot"></span>
+      <div>
+        <h2 style="font-size:1.1rem; letter-spacing:0.05em;" class="cyan">DFIR EXAMINER COMMAND PORTAL</h2>
+        <div class="mono text-muted" style="font-size:0.75rem;">Digital Forensics Candidate Proctoring & Bank Hub</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <a href="/index.html" class="btn btn-secondary" style="font-size:0.75rem;">Candidate View ↗</a>
+      <button id="logoutBtn" class="btn btn-danger" style="font-size:0.75rem;">Lock Console 🔒</button>
+    </div>
+  </header>
+
+  <!-- MAIN ADMIN WORKSPACE -->
+  <main class="admin-container">
+    
+    <!-- KPI METRICS ROW -->
+    <div class="kpi-grid">
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">TOTAL CANDIDATES</div>
+        <div class="kpi-value cyan" id="kpiTotalAttempts">0</div>
+      </div>
+
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">PASS RATE</div>
+        <div class="kpi-value green" id="kpiPassRate">0%</div>
+      </div>
+
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">AVERAGE SCORE</div>
+        <div class="kpi-value" id="kpiAvgScore">0%</div>
+      </div>
+
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">INTEGRITY FLAGS / BREACHES</div>
+        <div class="kpi-value red" id="kpiFlags">0</div>
+      </div>
+
+      <div class="hud-panel kpi-card">
+        <div class="kpi-title">ACTIVE QUESTIONS</div>
+        <div class="kpi-value" id="kpiTotalQuestions">0</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="admin-tabs">
+      <button class="tab-btn active" data-tab="submissionsTab">📋 Candidate Submissions & Audit</button>
+      <button class="tab-btn" data-tab="questionsTab">💾 Question Bank & Upload</button>
+      <button class="tab-btn" data-tab="configTab">⚙️ Assessment Settings</button>
+    </div>
+
+    <!-- TAB 1: SUBMISSIONS -->
+    <section class="tab-pane active" id="submissionsTab">
+      <div class="hud-panel hud-corner" style="padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div>
+            <h3 class="mono" style="font-size:1.1rem;">Candidate Audit Records</h3>
+            <p class="text-muted mono" style="font-size:0.75rem;">Real-time evaluation logs and proctoring violation traces.</p>
+          </div>
+          <div style="display:flex; gap:12px;">
+            <button id="exportCsvBtn" class="btn btn-primary" style="font-size:0.8rem;">📥 Export CSV Report</button>
+            <button id="clearSubmissionsBtn" class="btn btn-secondary" style="font-size:0.8rem; border-color:var(--accent-red); color:var(--accent-red);">Clear All Records</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="forensic-table">
+            <thead>
+              <tr>
+                <th>SUBMISSION ID</th>
+                <th>CANDIDATE NAME</th>
+                <th>CANDIDATE ID</th>
+                <th>SCORE</th>
+                <th>RESULT</th>
+                <th>VIOLATIONS</th>
+                <th>TIMESTAMP</th>
+                <th>CHAIN HASH</th>
+              </tr>
+            </thead>
+            <tbody id="submissionsTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: QUESTIONS MANAGER & UPLOADER -->
+    <section class="tab-pane" id="questionsTab">
+      <div class="hud-panel hud-corner" style="padding:24px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div>
+            <h3 class="mono" style="font-size:1.1rem;">Upload Question Bank</h3>
+            <p class="text-muted mono" style="font-size:0.75rem;">Upload custom JSON questions and answer keys. Zero knowledge is leaked to client browsers.</p>
+          </div>
+          <button id="downloadTemplateBtn" class="btn btn-secondary" style="font-size:0.8rem;">📄 Download Question Schema Template</button>
+        </div>
+
+        <!-- Dropzone -->
+        <div class="upload-dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".json" style="display:none;">
+          <div style="font-size:2rem; margin-bottom:10px;">📤</div>
+          <div class="mono" style="font-size:0.95rem; font-weight:600; margin-bottom:6px;">Drag & Drop Question Bank JSON file here</div>
+          <div class="text-muted mono" style="font-size:0.8rem;">or click to browse your computer</div>
+        </div>
+
+        <!-- Raw Editor -->
+        <div style="margin-top:20px;">
+          <label class="form-label">Or Paste / Edit Question JSON directly:</label>
+          <textarea id="rawJsonEditor" class="json-textarea" spellcheck="false" placeholder="[ { 'id': 'DF-1', 'category': '...', 'question': '...', 'options': [...], 'correctOption': 'A', 'explanation': '...' } ]"></textarea>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+            <div style="display:flex; gap:16px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;" class="mono">
+                <input type="radio" name="uploadMode" value="replace" checked>
+                <span>Replace Existing Bank</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;" class="mono">
+                <input type="radio" name="uploadMode" value="append">
+                <span>Append to Existing Bank</span>
+              </label>
+            </div>
+            <button id="saveQuestionsBtn" class="btn btn-primary">SAVE QUESTION BANK ➔</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Question Bank Preview -->
+      <div class="hud-panel" style="padding:24px;">
+        <h3 class="mono" style="font-size:1.1rem; margin-bottom:16px;">Current Bank Preview (<span id="previewCount">0</span> Questions)</h3>
+        <div id="questionsPreviewList" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: EXAM SETTINGS -->
+    <section class="tab-pane" id="configTab">
+      <div class="hud-panel hud-corner" style="max-width:700px; padding:32px;">
+        <h3 class="mono" style="font-size:1.1rem; margin-bottom:20px;">Assessment Configuration</h3>
+        
+        <form id="configForm" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label">Exam Title</label>
+            <input type="text" id="cfgTitle" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Exam Code / Identifier</label>
+            <input type="text" id="cfgCode" class="form-control" required>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+            <div class="form-group">
+              <label class="form-label">Duration (Minutes)</label>
+              <input type="number" id="cfgDuration" class="form-control" min="1" max="180" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Max Security Violations Allowed</label>
+              <input type="number" id="cfgViolations" class="form-control" min="1" max="10" required>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+            <div class="form-group">
+              <label class="form-label">Passing Score (%)</label>
+              <input type="number" id="cfgPassMark" class="form-control" min="10" max="100" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Admin Passcode</label>
+              <input type="password" id="cfgPasscode" class="form-control" placeholder="Update passcode">
+            </div>
+          </div>
+
+          <div style="margin:20px 0; display:flex; flex-direction:column; gap:12px;">
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" class="mono">
+              <input type="checkbox" id="cfgRandomQuestions">
+              <span>Randomize Question Order Per Student</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;" class="mono">
+              <input type="checkbox" id="cfgRandomOptions">
+              <span>Randomize Options Order Per Question</span>
+            </label>
+          </div>
+
+          <button type="button" id="saveConfigBtn" class="btn btn-primary" style="padding:12px 24px;">
+            SAVE CONFIGURATION ➔
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

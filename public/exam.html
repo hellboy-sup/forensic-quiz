@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forensic Assessment Terminal // Secure Exam Session</title>
+  <link rel="stylesheet" href="/css/forensic-theme.css">
+  <link rel="stylesheet" href="/css/exam.css">
+</head>
+<body class="exam-layout">
+
+  <!-- TOP HUD BAR -->
+  <nav class="exam-navbar">
+    <div class="brand-section">
+      <span class="status-dot"></span>
+      <div class="terminal-logo">
+        <span>DFIR//EVAL</span>
+        <span class="badge badge-cyan" id="examCode">DFIR-BENCHMARK</span>
+      </div>
+      <div class="candidate-hud mono">
+        <span>EXAMINER: <strong id="candidateName" class="cyan">Loading...</strong></span>
+        <span>[ID: <span id="candidateId" class="text-secondary">--</span>]</span>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:20px;">
+      <!-- Violation Badge -->
+      <span class="badge badge-green" id="violationBadge">
+        SHIELD ACTIVE: 0/3 VIOLATIONS
+      </span>
+
+      <!-- Live Chronometer -->
+      <div class="hud-timer-container">
+        <span class="timer-label">REMAINING TIME</span>
+        <span class="timer-digits" id="timerDigits">15:00</span>
+      </div>
+
+      <!-- Audio Mute Button -->
+      <button type="button" class="btn btn-secondary" id="audioToggleBtn" style="font-size:0.75rem; padding:6px 12px;">
+        🔊 AUDIO ON
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN EXAMINATION WORKSPACE -->
+  <main class="exam-container">
+    
+    <!-- LEFT: QUESTION WORKSPACE -->
+    <div class="question-viewport">
+      <div class="hud-panel hud-corner question-card">
+        
+        <div class="question-meta-bar">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="badge badge-cyan" id="artifactCategory">DISK FORENSICS</span>
+            <span class="artifact-id" id="artifactId">ARTIFACT // DF-101</span>
+          </div>
+          <div class="mono" style="font-size:0.85rem; color:var(--text-muted);">
+            QUESTION <span class="cyan" id="questionNum">1</span> OF <span id="totalQuestions">10</span>
+          </div>
+        </div>
+
+        <!-- Question Prompt -->
+        <div class="question-prompt" id="questionPrompt">
+          Loading investigation artifact question...
+        </div>
+
+        <!-- Interactive Options -->
+        <div class="options-group" id="optionsContainer">
+          <!-- Populated dynamically via exam.js -->
+        </div>
+
+        <!-- Question Navigation Action Bar -->
+        <div class="question-nav-bar">
+          <div style="display:flex; gap:12px;">
+            <button type="button" class="btn btn-secondary" id="prevBtn">
+              ◀ Previous
+            </button>
+            <button type="button" class="btn btn-secondary" id="flagBtn">
+              ☆ Mark for Review
+            </button>
+          </div>
+
+          <div style="display:flex; gap:12px;">
+            <button type="button" class="btn btn-primary" id="nextBtn">
+              Next Artifact ➔
+            </button>
+            <button type="button" class="btn btn-success" id="submitExamBtn">
+              Submit Investigation ✓
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: TACTICAL SIDEBAR -->
+    <aside class="exam-sidebar">
+      
+      <!-- Question Matrix Palette -->
+      <div class="hud-panel hud-corner sidebar-panel">
+        <div class="sidebar-title">
+          <span>ARTIFACT MATRIX</span>
+        </div>
+        <div class="matrix-grid" id="matrixGrid">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="palette-legend">
+          <div class="legend-item">
+            <span class="legend-chip" style="background:rgba(0, 255, 157, 0.5); border:1px solid var(--accent-green);"></span>
+            <span>Answered</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-chip" style="background:rgba(255, 255, 255, 0.1); border:1px solid rgba(255,255,255,0.2);"></span>
+            <span>Unanswered</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-chip" style="background:transparent; border:1px solid var(--accent-cyan);"></span>
+            <span>Current</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-chip" style="background:transparent; border:1px solid var(--accent-amber);"></span>
+            <span>Flagged</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Chain of Custody Security Stream -->
+      <div class="hud-panel sidebar-panel">
+        <div class="sidebar-title">
+          <span>CHAIN OF CUSTODY TELEMETRY</span>
+        </div>
+        <div class="security-stream" id="securityStream">
+          <div class="stream-entry">
+            <span class="stream-time">[SYSTEM]</span> Proctored session active. Zero-knowledge answer verification engaged.
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- SUBMISSION CONFIRMATION MODAL -->
+  <div class="modal-backdrop" id="submitConfirmModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="cyan mono">CONFIRM INVESTIGATION SUBMISSION</h3>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:16px;">Are you ready to seal and submit your forensic examination dossier?</p>
+        <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); font-family:var(--font-mono); font-size:0.85rem;">
+          <div style="margin-bottom:8px;">Artifacts Completed: <strong class="green" id="modalAnsweredCount">0</strong></div>
+          <div>Unanswered Artifacts: <strong class="amber" id="modalRemainingCount">0</strong></div>
+        </div>
+        <p class="text-muted" style="font-size:0.8rem; margin-top:14px;">
+          Note: Answers cannot be modified once certified. Cryptographic hash will be generated upon submission.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelSubmitBtn">Return to Exam</button>
+        <button type="button" class="btn btn-success" id="confirmSubmitBtn">Confirm & Certify ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN BREACH OVERLAY -->
+  <div class="breach-overlay" id="fullscreenBreachOverlay" style="display:none;">
+    <h1 class="red mono" style="font-size:2rem; margin-bottom:12px;">CRITICAL PROCTORING BREACH</h1>
+    <p class="mono" style="font-size:1.1rem; color:#fff; max-width:600px; margin-bottom:20px;">
+      Full-Screen mode has been disengaged. Window focus lost or unauthorized inspection attempt detected.
+    </p>
+    <div style="font-family:var(--font-mono); font-size:1.4rem; color:var(--accent-amber); margin-bottom:24px;">
+      RESTORING LOCKDOWN IN: <span id="fullscreenCountdown">10</span>s
+    </div>
+    <button type="button" class="btn btn-danger" id="reenterFullscreenBtn" style="padding:14px 32px; font-size:1rem;">
+      RE-ENGAGE SECURE FULLSCREEN ➔
+    </button>
+  </div>
+
+  <!-- SECURITY TERMINATION MODAL -->
+  <div class="modal-backdrop" id="terminationModal">
+    <div class="modal-container" style="border-color:var(--accent-red); box-shadow:0 0 50px rgba(255, 51, 102, 0.4);">
+      <div class="modal-header" style="background:rgba(255, 51, 102, 0.1);">
+        <h3 class="red mono">ASSESSMENT COMPROMISED - AUTO TERMINATED</h3>
+      </div>
+      <div class="modal-body">
+        <p style="color:#fff; margin-bottom:12px;">
+          Your examination session has been terminated by the proctoring engine due to exceeding the maximum permitted security violations.
+        </p>
+        <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.85rem; color:var(--accent-red);" id="terminationReasonText">
+          Security violation threshold exceeded.
+        </div>
+        <p class="text-muted" style="font-size:0.8rem; margin-top:14px;">
+          All telemetry, timestamps, and browser actions have been permanently committed to the chain of custody report for instructor audit.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/audio.js"></script>
+  <script src="/js/security.js"></script>
+  <script src="/js/exam.js"></script>
+</body>
+</html>

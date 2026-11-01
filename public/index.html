@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forensic Assessment Terminal // Candidate Briefing</title>
+  <link rel="stylesheet" href="/css/forensic-theme.css">
+  <style>
+    .briefing-hero {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .briefing-card {
+      padding: 40px;
+    }
+    .hud-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-cyan);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .rules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0;
+    }
+    @media (max-width: 768px) {
+      .rules-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .rule-item {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .rule-icon {
+      font-size: 1.25rem;
+      color: var(--accent-cyan);
+      flex-shrink: 0;
+    }
+    .rule-title {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #fff;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .rule-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      background: rgba(10, 16, 26, 0.8);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="top-nav">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="status-dot"></span>
+      <span class="mono cyan" style="font-size:0.9rem; font-weight:700; letter-spacing:0.08em;">FORENSIC EXAMINATION CORE v2.6</span>
+    </div>
+    <a href="/admin.html" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 14px;">
+      🛡️ Examiner Admin Console
+    </a>
+  </header>
+
+  <main class="briefing-hero">
+    <div class="hud-panel hud-corner briefing-card">
+      
+      <div class="hud-header-bar">
+        <div>
+          <span class="badge badge-cyan" id="examCodeBadge">DFIR-BENCHMARK</span>
+          <h1 style="font-size:1.6rem; margin-top:8px;" id="examTitleHead">Forensic Investigator Qualification</h1>
+          <p class="mono text-muted" style="font-size:0.8rem; margin-top:4px;" id="orgName">DIGITAL FORENSICS & INCIDENT RESPONSE ACADEMY</p>
+        </div>
+        <div style="text-align:right;">
+          <div class="mono text-muted" style="font-size:0.75rem;">SESSION STATUS</div>
+          <div class="mono green" style="font-size:0.9rem; font-weight:700;">● SECURE TERMINAL READY</div>
+        </div>
+      </div>
+
+      <!-- Candidate Registration Form -->
+      <form id="candidateForm" onsubmit="return false;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="form-group">
+            <label class="form-label" for="candidateName">Candidate Full Name *</label>
+            <input type="text" id="candidateName" class="form-control" placeholder="e.g. Alex Mercer" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="candidateId">Student Roll No / Candidate ID *</label>
+            <input type="text" id="candidateId" class="form-control" placeholder="e.g. DF-2026-8941" required autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Examination Protocol & Rules Dossier -->
+        <h3 style="font-size:0.95rem; margin-top:12px; letter-spacing:0.05em;" class="cyan mono">
+          ▶ PROCTORING & INTEGRITY PROTOCOLS
+        </h3>
+
+        <div class="rules-grid">
+          <div class="rule-item">
+            <span class="rule-icon">🔒</span>
+            <div>
+              <div class="rule-title">ZERO-KNOWLEDGE CLIENT</div>
+              <div class="rule-desc">Answer keys are held strictly in server memory. Inspecting HTML, scripts, or network packets yields zero answers.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-icon">🖥️</span>
+            <div>
+              <div class="rule-title">FULL-SCREEN LOCKDOWN</div>
+              <div class="rule-desc">Mandatory fullscreen mode. Exiting fullscreen triggers a breach siren and logs an integrity violation.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-icon">👁️</span>
+            <div>
+              <div class="rule-title">TAB & FOCUS MONITORING</div>
+              <div class="rule-desc">Switching browser tabs, minimizing the window, or moving to a second monitor is logged immediately.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-icon">⚠️</span>
+            <div>
+              <div class="rule-title">VIOLATION THRESHOLD (MAX 3)</div>
+              <div class="rule-desc">Developer Tools, keyboard tampering, or repeated tab blurs will terminate the test and flag the submission as compromised.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:28px; padding-top:20px; border-top:1px solid var(--border-subtle);">
+          <div class="mono" style="font-size:0.8rem; color:var(--text-muted);">
+            DURATION: <span class="cyan" id="durationText">15 Minutes</span> | TOTAL ARTIFACTS: <span class="cyan" id="questionCountText">Loading...</span>
+          </div>
+          <button type="button" id="startExamBtn" class="btn btn-primary" style="padding:14px 28px; font-size:0.95rem;">
+            INITIALIZE EXAMINATION TERMINAL ➔
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </main>
+
+  <script src="/js/audio.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Fetch exam config metadata
+      try {
+        const res = await fetch('/api/quiz/info');
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('examCodeBadge').textContent = data.examCode;
+          document.getElementById('examTitleHead').textContent = data.examTitle;
+          document.getElementById('orgName').textContent = data.organization;
+          document.getElementById('durationText').textContent = `${data.durationMinutes} Minutes`;
+          document.getElementById('questionCountText').textContent = `${data.totalQuestions} Questions`;
+        }
+      } catch (err) {
+        console.error('Failed to load quiz info:', err);
+      }
+
+      // Initialize session
+      const startBtn = document.getElementById('startExamBtn');
+      startBtn.addEventListener('click', async () => {
+        const name = document.getElementById('candidateName').value.trim();
+        const id = document.getElementById('candidateId').value.trim();
+
+        if (!name || !id) {
+          alert('Please enter both Candidate Name and Candidate ID / Roll Number.');
+          return;
+        }
+
+        startBtn.disabled = true;
+        startBtn.textContent = 'ESTABLISHING SECURE SESSION...';
+
+        if (window.ForensicAudio) {
+          window.ForensicAudio.init();
+          window.ForensicAudio.playNav();
+        }
+
+        try {
+          const res = await fetch('/api/quiz/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              candidateName: name,
+              candidateId: id
+            })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            // Save session to sessionStorage
+            sessionStorage.setItem('forensic_active_session', JSON.stringify(data));
+
+            // Request Fullscreen
+            try {
+              const docEl = document.documentElement;
+              if (docEl.requestFullscreen) {
+                await docEl.requestFullscreen();
+              } else if (docEl.webkitRequestFullscreen) {
+                await docEl.webkitRequestFullscreen();
+              }
+            } catch (fsErr) {
+              console.warn('Fullscreen request bypassed by browser policy. Will request inside exam.');
+            }
+
+            window.location.href = '/exam.html';
+          } else {
+            alert(`Initialization Error: ${data.message}`);
+            startBtn.disabled = false;
+            startBtn.textContent = 'INITIALIZE EXAMINATION TERMINAL ➔';
+          }
+        } catch (err) {
+          console.error('Start error:', err);
+          alert('Network communication error with examination server.');
+          startBtn.disabled = false;
+          startBtn.textContent = 'INITIALIZE EXAMINATION TERMINAL ➔';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

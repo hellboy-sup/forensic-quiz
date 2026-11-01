@@ -1,0 +1,348 @@
+[
+  {
+    "submissionId": "SUB-F06C6276",
+    "candidate": {
+      "name": "Investigator Mulder",
+      "id": "DF-8901",
+      "ip": "::1"
+    },
+    "examTitle": "FORENSIC INVESTIGATOR QUALIFICATION BENCHMARK",
+    "examCode": "CFI-704-DFIR",
+    "score": 8,
+    "totalQuestions": 10,
+    "percentage": 80,
+    "isPassed": true,
+    "autoSubmitted": false,
+    "terminationReason": null,
+    "violations": [],
+    "violationCount": 0,
+    "startedAt": "2026-11-01T00:40:13.053Z",
+    "submittedAt": "2026-11-01T00:40:13.129Z",
+    "timeSpentSeconds": 1,
+    "verificationHash": "A9B7D896B7A486FFABEDB8F29BE69178F5DA21DA63F20E78E9F13E0E86A4261A",
+    "categoryStats": {
+      "Disk Forensics & Integrity": {
+        "total": 1,
+        "correct": 1
+      },
+      "File System Forensics": {
+        "total": 1,
+        "correct": 1
+      },
+      "Volatile Memory (RAM)": {
+        "total": 1,
+        "correct": 1
+      },
+      "Anti-Forensics & Timestamps": {
+        "total": 1,
+        "correct": 1
+      },
+      "Network & Protocol Analysis": {
+        "total": 1,
+        "correct": 1
+      },
+      "Registry Forensics": {
+        "total": 1,
+        "correct": 1
+      },
+      "Incident Response & Triage": {
+        "total": 1,
+        "correct": 1
+      },
+      "Chain of Custody & Hash Integrity": {
+        "total": 1,
+        "correct": 1
+      },
+      "File Headers & Magic Bytes": {
+        "total": 1,
+        "correct": 0
+      },
+      "Log Analysis & Event IDs": {
+        "total": 1,
+        "correct": 0
+      }
+    },
+    "resultsSummary": [
+      {
+        "index": 1,
+        "id": "DF-101",
+        "category": "Disk Forensics & Integrity",
+        "question": "During evidence acquisition of a suspect SATA drive, which mechanism ensures that the media remains uncorrupted and forensically sound?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Executing an unbuffered dd copy directly in single-user mode"
+          },
+          {
+            "id": "B",
+            "text": "Employing a hardware or firmware-based write-blocker"
+          },
+          {
+            "id": "C",
+            "text": "Remounting the filesystem as read-only via standard OS mount"
+          },
+          {
+            "id": "D",
+            "text": "Applying NTFS journaling rollback to stabilize clusters"
+          }
+        ],
+        "studentChoice": "B",
+        "correctOption": "B",
+        "isCorrect": true,
+        "explanation": "A write blocker guarantees that the storage controller blocks any write or metadata update commands, preserving the bitstream integrity of the original evidence."
+      },
+      {
+        "index": 2,
+        "id": "DF-102",
+        "category": "File System Forensics",
+        "question": "In NTFS, what is the significance of the $MFT (Master File Table) record size and resident files?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Each record is 4096 bytes; files smaller than 4KB are automatically encrypted"
+          },
+          {
+            "id": "B",
+            "text": "Each record is 1024 bytes; small files under ~700 bytes can live directly within the MFT record itself"
+          },
+          {
+            "id": "C",
+            "text": "Each record is 512 bytes; resident files cannot have alternate data streams ($DATA)"
+          },
+          {
+            "id": "D",
+            "text": "Each record is variable; resident files are stored only in unallocated cluster space"
+          }
+        ],
+        "studentChoice": "B",
+        "correctOption": "B",
+        "isCorrect": true,
+        "explanation": "NTFS MFT records are typically 1024 bytes. When file content fits within the standard record along with attributes (resident file, usually < 700 bytes), no cluster outside the MFT is allocated."
+      },
+      {
+        "index": 3,
+        "id": "DF-103",
+        "category": "Volatile Memory (RAM)",
+        "question": "Which volatile artifact is commonly parsed to discover injected DLLs, unlinked VAD trees, and hollowed processes in a Windows memory dump?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Shimcache / AppCompatCache"
+          },
+          {
+            "id": "B",
+            "text": "Virtual Address Descriptors (VAD) and malfind heuristics"
+          },
+          {
+            "id": "C",
+            "text": "Amcache.hve transaction logs"
+          },
+          {
+            "id": "D",
+            "text": "Prefetch file hash headers"
+          }
+        ],
+        "studentChoice": "B",
+        "correctOption": "B",
+        "isCorrect": true,
+        "explanation": "The Virtual Address Descriptor (VAD) tree records memory allocations. Tools like Volatility parse VAD nodes with PAGE_EXECUTE_READWRITE permissions to detect code injection and process hollowing."
+      },
+      {
+        "index": 4,
+        "id": "DF-104",
+        "category": "Anti-Forensics & Timestamps",
+        "question": "What artifact allows an investigator to detect 'Timestomping' on an NTFS partition?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Comparing $STANDARD_INFORMATION timestamps against $FILE_NAME timestamps"
+          },
+          {
+            "id": "B",
+            "text": "Checking the hardware BIOS real-time clock battery log"
+          },
+          {
+            "id": "C",
+            "text": "Reviewing the Windows Update orchestrator event 1074"
+          },
+          {
+            "id": "D",
+            "text": "Verifying the volume GUID in the BCD store"
+          }
+        ],
+        "studentChoice": "A",
+        "correctOption": "A",
+        "isCorrect": true,
+        "explanation": "Timestomping utilities commonly alter the easily accessible $STANDARD_INFORMATION attribute timestamps ($SI), but frequently fail to modify the corresponding $FILE_NAME attribute ($FN) timestamps, exposing the discrepancy."
+      },
+      {
+        "index": 5,
+        "id": "DF-105",
+        "category": "Network & Protocol Analysis",
+        "question": "An attacker used DNS tunneling for data exfiltration. Which metric in DNS query logs most strongly indicates active tunneling?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Frequent standard PTR queries for RFC 1918 private addresses"
+          },
+          {
+            "id": "B",
+            "text": "Abnormally high entropy and length in TXT/A subdomains queries sent to a single authoritative name server"
+          },
+          {
+            "id": "C",
+            "text": "High volumes of DNS reply packets returning NXDOMAIN responses"
+          },
+          {
+            "id": "D",
+            "text": "Standard DNSSEC RRSET verification timeouts on TCP port 53"
+          }
+        ],
+        "studentChoice": "B",
+        "correctOption": "B",
+        "isCorrect": true,
+        "explanation": "DNS tunneling encodes binary/text payloads into high-entropy, long subdomain strings (e.g., base32/hex chunks) queried against attacker-controlled name servers."
+      },
+      {
+        "index": 6,
+        "id": "DF-106",
+        "category": "Registry Forensics",
+        "question": "Which registry key tracks recently executed GUI applications along with their run counts and last execution timestamps, encoded via ROT13?",
+        "options": [
+          {
+            "id": "A",
+            "text": "UserAssist (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\UserAssist)"
+          },
+          {
+            "id": "B",
+            "text": "RunMRU (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU)"
+          },
+          {
+            "id": "C",
+            "text": "AppPaths (HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths)"
+          },
+          {
+            "id": "D",
+            "text": "ShellFolders (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders)"
+          }
+        ],
+        "studentChoice": "A",
+        "correctOption": "A",
+        "isCorrect": true,
+        "explanation": "UserAssist subkeys store ROT13-encoded values recording executable names, execution count, and the 64-bit FILETIME of last launch."
+      },
+      {
+        "index": 7,
+        "id": "DF-107",
+        "category": "Incident Response & Triage",
+        "question": "What is the primary forensic value of the Windows Prefetch directory (C:\\Windows\\Prefetch)?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Proves an application was executed, with execution timestamps, run count, and referenced file/directory handles"
+          },
+          {
+            "id": "B",
+            "text": "Stores full decrypted copies of all clipboard buffers at time of crash"
+          },
+          {
+            "id": "C",
+            "text": "Holds real-time network sockets opened by each process during boot"
+          },
+          {
+            "id": "D",
+            "text": "Contains SHA-256 signatures validated against Microsoft SmartScreen"
+          }
+        ],
+        "studentChoice": "A",
+        "correctOption": "A",
+        "isCorrect": true,
+        "explanation": "Prefetch files (.pf) are created by the Cache Manager to speed up app loading. Forensically, they confirm execution, last run times, run count, and file dependencies accessed in the first 10 seconds of launch."
+      },
+      {
+        "index": 8,
+        "id": "DF-108",
+        "category": "Chain of Custody & Hash Integrity",
+        "question": "If an investigator calculates an MD5 hash and a SHA-256 hash of an E01 image and compares it to the original physical drive acquisition log:",
+        "options": [
+          {
+            "id": "A",
+            "text": "The E01 file hash will match the physical drive hash exactly byte-for-byte"
+          },
+          {
+            "id": "B",
+            "text": "The internal stored verification hash inside the E01 metadata must match the acquisition hash, even if the raw E01 container hash differs"
+          },
+          {
+            "id": "C",
+            "text": "E01 files do not support cryptographic hashing, requiring raw DD format"
+          },
+          {
+            "id": "D",
+            "text": "Any difference in hashing algorithm automatically invalidates evidence under Daubert standards"
+          }
+        ],
+        "studentChoice": "B",
+        "correctOption": "B",
+        "isCorrect": true,
+        "explanation": "Expert Witness Format (E01) encapsulates metadata, compression, and header information. The hash of the .E01 container file differs from the raw drive, but the embedded evidence hash recorded in the E01 metadata matches the original raw drive acquisition."
+      },
+      {
+        "index": 9,
+        "id": "DF-109",
+        "category": "File Headers & Magic Bytes",
+        "question": "An analyst inspects an artifact with extension '.jpg'. The first 4 bytes are '4D 5A 90 00'. What does this reveal?",
+        "options": [
+          {
+            "id": "A",
+            "text": "The file is a corrupted JFIF/JPEG image missing its SOI marker (FF D8)"
+          },
+          {
+            "id": "B",
+            "text": "The file is a disguised Portable Executable (PE / EXE / DLL) masquerading as an image"
+          },
+          {
+            "id": "C",
+            "text": "The file is an encrypted BitLocker recovery volume header"
+          },
+          {
+            "id": "D",
+            "text": "The file is a standard PKZIP archive container"
+          }
+        ],
+        "studentChoice": null,
+        "correctOption": "B",
+        "isCorrect": false,
+        "explanation": "4D 5A ('MZ' - Mark Zbikowski) is the unmistakable DOS MZ header for Windows PE binaries (executables and DLLs), proving the file is an executable disguised with a .jpg extension."
+      },
+      {
+        "index": 10,
+        "id": "DF-110",
+        "category": "Log Analysis & Event IDs",
+        "question": "In the Windows Security Event Log, which Event ID indicates that a new process has been created (crucial for tracking process execution chains)?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Event ID 4624"
+          },
+          {
+            "id": "B",
+            "text": "Event ID 4672"
+          },
+          {
+            "id": "C",
+            "text": "Event ID 4688"
+          },
+          {
+            "id": "D",
+            "text": "Event ID 1102"
+          }
+        ],
+        "studentChoice": null,
+        "correctOption": "C",
+        "isCorrect": false,
+        "explanation": "Event ID 4688 logs process creation (including parent process ID and command-line arguments when command line auditing is enabled). 4624 is logon, 4672 is special privileges assigned, and 1102 is audit log cleared."
+      }
+    ]
+  }
+]

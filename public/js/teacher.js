@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressInfo = `<span style="color:#b91c1c; font-size:0.8rem;">${s.lockReason || 'Page refreshed'}</span>`;
       } else if (s.status === 'SUBMITTED') {
         statusBadge = `<span class="badge badge-blue">SUBMITTED</span>`;
-        progressInfo = `<strong>${s.score}/${totalQuestions}</strong> (${s.percentage}%) - ${s.isPassed ? 'PASSED' : 'FAILED'}`;
+        progressInfo = `<strong style="font-size:0.95rem; color:#0369a1;">${s.score} / ${totalQuestions}</strong>`;
         timeLeftStr = 'Completed';
       } else {
         statusBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">NOT STARTED</span>`;
@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mode = document.querySelector('input[name="csvMode"]:checked').value;
     importCsvBtn.disabled = true;
-    importCsvBtn.textContent = 'GENERATING PASSWORDS...';
+    importCsvBtn.textContent = 'SAVING ROSTER...';
 
     try {
       const res = await fetch('/api/teacher/students/import-csv', {
@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to process student CSV.');
     } finally {
       importCsvBtn.disabled = false;
-      importCsvBtn.textContent = 'GENERATE PASSWORDS & SAVE ROSTER ➔';
+      importCsvBtn.textContent = 'SAVE ROSTER (PASSWORDS = ENROLLMENT NO) ➔';
     }
   });
 

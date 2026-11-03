@@ -115,8 +115,8 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="studentPassword">System-Generated Password *</label>
-          <input type="password" id="studentPassword" class="form-control" placeholder="Provided by your teacher"
+          <label class="form-label" for="studentPassword">Password (Enrollment Number) *</label>
+          <input type="password" id="studentPassword" class="form-control" placeholder="Same as your Enrollment / Roll Number"
             required autocomplete="current-password">
         </div>
 
@@ -184,7 +184,7 @@
         const password = passwordInput.value.trim();
 
         if (!studentId || !password) {
-          showAlert('Please enter both Student ID and your system password.');
+          showAlert('Please enter both your Roll Number / Student ID and Password (Enrollment No).');
           return;
         }
 

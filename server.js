@@ -21,7 +21,57 @@ const STUDENTS_FILE = path.join(DATA_DIR, 'students.json');
 // Ensure directory and files exist
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(SUBMISSIONS_FILE)) fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify([], null, 2));
-if (!fs.existsSync(STUDENTS_FILE)) fs.writeFileSync(STUDENTS_FILE, JSON.stringify([], null, 2));
+
+// Permanent Default Student Roster
+const DEFAULT_STUDENTS = [
+  { studentId: "253001810157", name: "Shibaditya Acharya" },
+  { studentId: "253001810159", name: "Arika Alam" },
+  { studentId: "253001810156", name: "Ahona Das" },
+  { studentId: "253001810151", name: "Tuhina Baidya" },
+  { studentId: "253001810168", name: "Shubham Sarkar" },
+  { studentId: "253001810145", name: "Tandrima Khutia" },
+  { studentId: "253001810166", name: "Priyojit Mandal" },
+  { studentId: "253001810148", name: "Rahul Biswas" },
+  { studentId: "253001810164", name: "Pubali Banerjee" },
+  { studentId: "253001810162", name: "Sayak Ghosal" },
+  { studentId: "253001810161", name: "Twameka Chattopadhyaya" },
+  { studentId: "253001810155", name: "Rajat shit" },
+  { studentId: "253001810167", name: "Srishtatree karmakar" }
+];
+
+function ensureStudentRoster() {
+  let existing = [];
+  try {
+    if (fs.existsSync(STUDENTS_FILE)) {
+      existing = JSON.parse(fs.readFileSync(STUDENTS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    existing = [];
+  }
+
+  if (!Array.isArray(existing) || existing.length === 0) {
+    const defaultRoster = DEFAULT_STUDENTS.map(s => ({
+      studentId: s.studentId,
+      name: s.name,
+      password: s.studentId, // Password equals enrollment number
+      status: "NOT_STARTED",
+      lockReason: null,
+      currentAnswers: {},
+      currentIndex: 0,
+      remainingSeconds: null,
+      violations: [],
+      score: null,
+      totalQuestions: null,
+      startedAt: null,
+      submittedAt: null,
+      timeSpentSeconds: null,
+      verificationHash: null
+    }));
+    fs.writeFileSync(STUDENTS_FILE, JSON.stringify(defaultRoster, null, 2), 'utf8');
+  }
+}
+
+ensureStudentRoster();
 
 // Helper: Read JSON safely
 function readJSON(file, fallback = {}) {
@@ -201,11 +251,15 @@ app.post('/api/student/login', (req, res) => {
   const student = students.find(s => s.studentId.toLowerCase() === cleanId.toLowerCase());
 
   if (!student) {
-    return res.status(404).json({ success: false, message: 'Student ID not found in exam roll.' });
+    return res.status(404).json({ success: false, message: 'Student ID / Enrollment Number not found in exam roll.' });
   }
 
-  if (student.password !== cleanPass) {
-    return res.status(401).json({ success: false, message: 'Incorrect system-generated password.' });
+  // Password is same as enrollment / student ID
+  const expectedPassword = student.password || student.studentId;
+  const isPassMatch = cleanPass === expectedPassword || cleanPass.toLowerCase() === student.studentId.toLowerCase();
+
+  if (!isPassMatch) {
+    return res.status(401).json({ success: false, message: 'Incorrect password. Your password is your Enrollment Number.' });
   }
 
   // 1. Single Attempt Check: Cannot retake if already submitted
@@ -452,10 +506,6 @@ app.post('/api/student/submit', (req, res) => {
     });
   });
 
-  const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
-  const passMark = Number(config.passingScorePercent) || 70;
-  const isPassed = percentage >= passMark;
-
   // Cryptographic Chain of Custody SHA-256 seal
   const hashPayload = `${student.studentId}:${student.name}:${score}:${total}:${student.startedAt}:${now}`;
   const verificationHash = crypto.createHash('sha256').update(hashPayload).digest('hex').toUpperCase();
@@ -467,8 +517,7 @@ app.post('/api/student/submit', (req, res) => {
   student.status = 'SUBMITTED';
   student.score = score;
   student.totalQuestions = total;
-  student.percentage = percentage;
-  student.isPassed = isPassed;
+  student.isPassed = null;
   student.submittedAt = new Date(now).toISOString();
   student.timeSpentSeconds = timeSpentSeconds;
   student.verificationHash = verificationHash;
@@ -481,11 +530,8 @@ app.post('/api/student/submit', (req, res) => {
     submissionId: 'SUB-' + crypto.randomUUID().substring(0, 8).toUpperCase(),
     candidate: { name: student.name, id: student.studentId },
     examTitle: config.examTitle,
-    examCode: config.examCode,
     score,
     totalQuestions: total,
-    percentage,
-    isPassed,
     violations: student.violations || [],
     violationCount: (student.violations || []).length,
     startedAt: student.startedAt,
@@ -503,12 +549,8 @@ app.post('/api/student/submit', (req, res) => {
       submissionId: submissionRecord.submissionId,
       candidate: { name: student.name, id: student.studentId },
       examTitle: config.examTitle,
-      examCode: config.examCode,
       score,
       totalQuestions: total,
-      percentage,
-      isPassed,
-      passMark,
       timeSpentSeconds,
       verificationHash,
       violations: student.violations || [],
@@ -620,14 +662,14 @@ app.post('/api/teacher/students/reset-password', checkTeacherAuth, (req, res) =>
     return res.status(404).json({ success: false, message: 'Student not found.' });
   }
 
-  student.password = generateSystemPassword('SEC');
+  student.password = student.studentId;
   writeJSON(STUDENTS_FILE, students);
 
   console.log(`[PASSWORD RESET] Teacher reset password for ${student.name} (${student.studentId}) -> ${student.password}`);
   res.json({
     success: true,
     newPassword: student.password,
-    message: `Password for ${student.name} (${student.studentId}) reset to: ${student.password}`
+    message: `Password for ${student.name} (${student.studentId}) is set to their Enrollment Number: ${student.password}`
   });
 });
 
@@ -749,7 +791,7 @@ app.post('/api/teacher/students/import-csv', checkTeacherAuth, (req, res) => {
 
     if (!studentId || !name) continue;
 
-    const password = generateSystemPassword('SEC');
+    const password = studentId; // Password is identical to Enrollment / Student ID
 
     newStudents.push({
       studentId,
@@ -815,15 +857,13 @@ app.get('/api/teacher/students/export-credentials', checkTeacherAuth, (req, res)
 app.get('/api/teacher/export-progress', checkTeacherAuth, (req, res) => {
   const students = readJSON(STUDENTS_FILE, []);
   const headers = [
-    'Student ID',
+    'Enrollment / Student ID',
     'Student Name',
-    'System Password',
+    'Password',
     'Status',
     'Lock Reason',
     'Score',
     'Total Questions',
-    'Percentage',
-    'Result',
     'Violations Count',
     'Time Spent (s)',
     'Started At',
@@ -834,13 +874,11 @@ app.get('/api/teacher/export-progress', checkTeacherAuth, (req, res) => {
   const rows = students.map(s => [
     `"${s.studentId}"`,
     `"${(s.name || '').replace(/"/g, '""')}"`,
-    `"${s.password}"`,
+    `"${s.password || s.studentId}"`,
     `"${s.status}"`,
     `"${(s.lockReason || '').replace(/"/g, '""')}"`,
     s.score !== null ? s.score : '',
     s.totalQuestions !== null ? s.totalQuestions : '',
-    s.percentage !== null ? `${s.percentage}%` : '',
-    s.isPassed === true ? 'PASSED' : (s.isPassed === false ? 'FAILED' : ''),
     (s.violations || []).length,
     s.timeSpentSeconds !== null ? s.timeSpentSeconds : '',
     `"${s.startedAt || ''}"`,

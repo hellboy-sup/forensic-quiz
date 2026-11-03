@@ -233,8 +233,7 @@
       <div class="hud-panel" style="padding:24px; margin-bottom:20px;">
         <h3 style="font-size:1.1rem; margin-bottom:6px;">Upload Student Roster (CSV)</h3>
         <p class="text-muted" style="font-size:0.8rem; margin-bottom:16px;">
-          Upload or paste your student list. The system will automatically generate a secure, unique password for each
-          student.
+          Upload or paste your candidate list. Each student's login password will automatically be set equal to their Enrollment Number / Student ID.
         </p>
 
         <!-- Dropzone -->
@@ -242,13 +241,13 @@
           <input type="file" id="studentFileInput" accept=".csv,.txt" style="display:none;">
           <div style="font-size:2rem; margin-bottom:8px;">📄</div>
           <div style="font-weight:600; font-size:0.95rem;">Drag & Drop student CSV file here</div>
-          <div class="text-muted" style="font-size:0.8rem;">Format: <code>StudentID, Student Name</code></div>
+          <div class="text-muted" style="font-size:0.8rem;">Format: <code>EnrollmentNo, Student Name</code></div>
         </div>
 
         <div>
           <label class="form-label">Or Paste CSV rows directly:</label>
           <textarea id="studentCsvTextarea" class="json-textarea" style="height:160px;"
-            placeholder="DF-2026-001, Sarah Connor&#10;DF-2026-002, Alex Mercer&#10;DF-2026-003, James Gordon"></textarea>
+            placeholder="253001810157, Shibaditya Acharya&#10;253001810159, Arika Alam&#10;253001810156, Ahona Das"></textarea>
 
           <div
             style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
@@ -262,7 +261,7 @@
                 <span>Append to Existing Roster</span>
               </label>
             </div>
-            <button id="importCsvBtn" class="btn btn-primary">GENERATE PASSWORDS & SAVE ROSTER ➔</button>
+            <button id="importCsvBtn" class="btn btn-primary">SAVE ROSTER (PASSWORDS = ENROLLMENT NO) ➔</button>
           </div>
         </div>
       </div>
@@ -307,15 +306,9 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-            <div class="form-group">
-              <label class="form-label">Passing Score (%)</label>
-              <input type="number" id="cfgPassMark" class="form-control" min="10" max="100" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Update Teacher Passcode</label>
-              <input type="password" id="cfgPasscode" class="form-control" placeholder="Leave blank to keep current">
-            </div>
+          <div class="form-group">
+            <label class="form-label">Update Teacher Passcode</label>
+            <input type="password" id="cfgPasscode" class="form-control" placeholder="Leave blank to keep current">
           </div>
 
           <button type="button" id="saveSettingsBtn" class="btn btn-primary" style="margin-top:8px;">

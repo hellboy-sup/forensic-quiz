@@ -46,8 +46,8 @@ function writeJSON(file, data) {
   }
 }
 
-// Helper: Generate Secure System Password (e.g., DF-8391-X)
-function generateSystemPassword(prefix = 'DF') {
+// Helper: Generate Secure System Password (e.g., QD-8391-X)
+function generateSystemPassword(prefix = 'QD') {
   const digits = Math.floor(1000 + Math.random() * 9000);
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const char = chars.charAt(Math.floor(Math.random() * chars.length));
@@ -904,9 +904,9 @@ app.get('/api/quiz/info', (req, res) => {
   res.json({
     success: true,
     isExamLive: config.isExamLive === true,
-    examTitle: config.examTitle || 'Digital Forensics Assessment',
-    examCode: config.examCode || 'DFIR-BENCHMARK',
-    organization: config.organization || 'Digital Forensics Laboratory',
+    examTitle: config.examTitle || 'Questioned Document Examination',
+    examCode: config.examCode || '',
+    organization: config.organization || 'Department of Forensic Science',
     durationMinutes: config.durationMinutes || 15,
     violationLimit: config.violationLimit || 3,
     passingScorePercent: config.passingScorePercent || 70,

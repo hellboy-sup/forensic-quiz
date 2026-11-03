@@ -293,7 +293,7 @@ app.post('/api/student/login', (req, res) => {
   }
 
   const questions = readJSON(QUESTIONS_FILE, []);
-  const durationMinutes = Number(config.durationMinutes) || 15;
+  const durationMinutes = Number(config.durationMinutes) || 60;
   const totalSeconds = durationMinutes * 60;
 
   // Prepare questions: Randomize/Shuffle uniquely for each student
@@ -945,7 +945,7 @@ app.get('/api/quiz/info', (req, res) => {
     examTitle: config.examTitle || 'Questioned Document Examination',
     examCode: config.examCode || '',
     organization: config.organization || 'Department of Forensic Science',
-    durationMinutes: config.durationMinutes || 15,
+    durationMinutes: config.durationMinutes || 60,
     violationLimit: config.violationLimit || 3,
     passingScorePercent: config.passingScorePercent || 70,
     totalQuestions: questions.length

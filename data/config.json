@@ -2,7 +2,7 @@
   "examTitle": "QUESTIONED DOCUMENT EXAMINATION",
   "examCode": "",
   "organization": "DEPARTMENT OF FORENSIC SCIENCE",
-  "durationMinutes": 15,
+  "durationMinutes": 60,
   "violationLimit": 3,
   "passingScorePercent": 70,
   "randomizeQuestions": true,

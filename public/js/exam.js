@@ -29,10 +29,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     remainingSeconds = Math.min(remainingSeconds, calculated);
   }
   session.remainingSeconds = remainingSeconds;
-  sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
   const userAnswers = new Map(Object.entries(session.currentAnswers || {}));
   const flaggedQuestions = new Set();
   let isSubmitting = false;
+
+  // Track the furthest question reached / unlocked
+  let maxReachedIndex = typeof session.maxReachedIndex === 'number' ? session.maxReachedIndex : currentIndex;
+  questions.forEach((q, i) => {
+    if (userAnswers.has(q.id)) {
+      maxReachedIndex = Math.max(maxReachedIndex, i);
+    }
+  });
+  maxReachedIndex = Math.max(maxReachedIndex, currentIndex);
+  session.maxReachedIndex = maxReachedIndex;
+  sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
 
   // DOM Elements
   const examTitleEl = document.getElementById('examTitle');
@@ -213,6 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Update local session storage
       session.currentAnswers = Object.fromEntries(userAnswers);
       session.currentIndex = currentIndex;
+      session.maxReachedIndex = maxReachedIndex;
       session.remainingSeconds = remainingSeconds;
       sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
     } catch (err) {
@@ -232,19 +243,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.textContent = idx + 1;
       btn.dataset.index = idx;
       btn.addEventListener('click', () => {
-        // Enforce sequence: cannot jump ahead to unreached questions
-        if (idx > currentIndex) {
-          const isCurrAnswered = userAnswers.has(questions[currentIndex]?.id);
-          if (!isCurrAnswered) {
-            alert('You must select an answer for the current question before moving forward.');
-            return;
-          }
-          if (idx > currentIndex + 1) {
-            alert('Questions must be completed sequentially. Please proceed to the next question.');
-            return;
-          }
+        // Any question up to maxReachedIndex has already been reached/unlocked and can be visited freely!
+        if (idx <= maxReachedIndex) {
+          goToQuestion(idx);
+          return;
         }
-        goToQuestion(idx);
+
+        // If attempting to jump ahead to an unreached question:
+        const isMaxAnswered = userAnswers.has(questions[maxReachedIndex]?.id);
+        if (idx === maxReachedIndex + 1 && isMaxAnswered) {
+          maxReachedIndex = idx;
+          session.maxReachedIndex = maxReachedIndex;
+          goToQuestion(idx);
+          return;
+        }
+
+        if (!isMaxAnswered) {
+          alert(`You must select an answer for Question ${maxReachedIndex + 1} before proceeding to new questions.`);
+        } else {
+          alert('Questions must be unlocked sequentially. Please proceed to the next question.');
+        }
       });
       matrixGridEl.appendChild(btn);
     });
@@ -261,8 +279,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.classList.toggle('answered', userAnswers.has(q.id));
       btn.classList.toggle('flagged', flaggedQuestions.has(q.id));
 
-      // Lock future questions that cannot be jumped to
-      const isLockedFuture = idx > currentIndex && (!isCurrentAnswered || idx > currentIndex + 1);
+      // A question is locked ONLY if it is beyond the furthest unlocked question
+      const isNextImmediateUnlocked = (idx === maxReachedIndex + 1 && isCurrentAnswered && currentIndex === maxReachedIndex);
+      const isLockedFuture = idx > maxReachedIndex && !isNextImmediateUnlocked;
       btn.classList.toggle('locked-future', isLockedFuture);
     });
   }
@@ -301,6 +320,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       card.addEventListener('click', () => {
         userAnswers.set(q.id, opt.id);
+        if (currentIndex === maxReachedIndex && maxReachedIndex + 1 < questions.length) {
+          maxReachedIndex = Math.max(maxReachedIndex, currentIndex + 1);
+          session.maxReachedIndex = maxReachedIndex;
+        }
         renderCurrentQuestion();
         updateMatrixState();
         syncProgress();
@@ -349,6 +372,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function goToQuestion(idx) {
     if (idx >= 0 && idx < questions.length) {
+      if (idx > maxReachedIndex) {
+        maxReachedIndex = idx;
+        session.maxReachedIndex = maxReachedIndex;
+      }
       currentIndex = idx;
       renderCurrentQuestion();
       syncProgress();
@@ -369,7 +396,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       if (currentIndex < questions.length - 1) {
-        goToQuestion(currentIndex + 1);
+        const nextIdx = currentIndex + 1;
+        if (nextIdx > maxReachedIndex) {
+          maxReachedIndex = nextIdx;
+          session.maxReachedIndex = maxReachedIndex;
+        }
+        goToQuestion(nextIdx);
       }
     });
   }

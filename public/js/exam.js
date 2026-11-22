@@ -18,7 +18,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Restore State from Session / Server
   let currentIndex = session.currentIndex || 0;
-  let remainingSeconds = session.remainingSeconds || (session.durationMinutes * 60);
+  let remainingSeconds = typeof session.remainingSeconds === 'number'
+    ? session.remainingSeconds
+    : (session.durationMinutes * 60);
+
+  // Cross-verify against session.startedAt to strictly prevent timer reset upon browser refresh
+  if (session.startedAt) {
+    const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
+    const calculated = Math.max(0, (session.durationMinutes * 60) - elapsed);
+    remainingSeconds = Math.min(remainingSeconds, calculated);
+  }
+  session.remainingSeconds = remainingSeconds;
+  sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
   const userAnswers = new Map(Object.entries(session.currentAnswers || {}));
   const flaggedQuestions = new Set();
   let isSubmitting = false;
@@ -163,8 +174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Sync every 8 seconds
-  const syncInterval = setInterval(syncProgress, 8000);
+  // Sync every 4 seconds
+  const syncInterval = setInterval(syncProgress, 4000);
 
   // Build Matrix Palette
   function buildMatrix() {
@@ -359,6 +370,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Timer Countdown
   const timerInterval = setInterval(() => {
     remainingSeconds = Math.max(0, remainingSeconds - 1);
+    session.remainingSeconds = remainingSeconds;
+    sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
 
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;

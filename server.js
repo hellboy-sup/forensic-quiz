@@ -330,13 +330,26 @@ app.post('/api/student/login', (req, res) => {
   const sessionId = crypto.randomUUID();
 
   // If starting for the very first time
-  if (student.status === 'NOT_STARTED') {
+  let currentRemaining = totalSeconds;
+  if (student.status === 'NOT_STARTED' || !student.startedAt) {
     student.status = 'IN_PROGRESS';
     student.startedAt = new Date(now).toISOString();
     student.remainingSeconds = totalSeconds;
     student.currentAnswers = {};
     student.currentIndex = 0;
     student.violations = [];
+    currentRemaining = totalSeconds;
+    writeJSON(STUDENTS_FILE, students);
+  } else {
+    // Resuming existing in-progress session
+    const elapsedSeconds = Math.floor((now - new Date(student.startedAt).getTime()) / 1000);
+    const calculatedRemaining = Math.max(0, totalSeconds - elapsedSeconds);
+    if (typeof student.remainingSeconds === 'number' && student.remainingSeconds > 0) {
+      currentRemaining = Math.min(student.remainingSeconds, calculatedRemaining);
+    } else {
+      currentRemaining = calculatedRemaining;
+    }
+    student.remainingSeconds = currentRemaining;
     writeJSON(STUDENTS_FILE, students);
   }
 
@@ -358,7 +371,8 @@ app.post('/api/student/login', (req, res) => {
     examTitle: config.examTitle,
     examCode: config.examCode,
     durationMinutes,
-    remainingSeconds: student.remainingSeconds || totalSeconds,
+    startedAt: student.startedAt,
+    remainingSeconds: currentRemaining,
     currentAnswers: student.currentAnswers || {},
     currentIndex: student.currentIndex || 0,
     violationLimit: config.violationLimit || 3,
@@ -400,10 +414,19 @@ app.post('/api/student/lock', (req, res) => {
     student.lockReason = reason || 'Page refreshed or browser session disconnected';
     if (currentAnswers) student.currentAnswers = currentAnswers;
     if (currentIndex !== undefined) student.currentIndex = currentIndex;
-    if (remainingSeconds !== undefined) student.remainingSeconds = remainingSeconds;
+
+    if (typeof remainingSeconds === 'number' && remainingSeconds > 0) {
+      student.remainingSeconds = remainingSeconds;
+    } else if (student.startedAt) {
+      const config = readJSON(CONFIG_FILE, {});
+      const totalSeconds = (Number(config.durationMinutes) || 60) * 60;
+      const elapsed = Math.floor((Date.now() - new Date(student.startedAt).getTime()) / 1000);
+      student.remainingSeconds = Math.max(0, totalSeconds - elapsed);
+    }
+
     student.lockedAt = new Date().toISOString();
     writeJSON(STUDENTS_FILE, students);
-    console.log(`[EXAM LOCK] Student ${student.name} (${student.studentId}) locked: ${student.lockReason}`);
+    console.log(`[EXAM LOCK] Student ${student.name} (${student.studentId}) locked: ${student.lockReason} | Remaining: ${student.remainingSeconds}s`);
   }
 
   res.json({ success: true, locked: true });

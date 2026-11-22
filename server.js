@@ -374,6 +374,7 @@ app.post('/api/student/login', (req, res) => {
     startedAt: student.startedAt,
     remainingSeconds: currentRemaining,
     currentAnswers: student.currentAnswers || {},
+    flaggedQuestions: student.flaggedQuestions || [],
     currentIndex: student.currentIndex || 0,
     violationLimit: config.violationLimit || 3,
     questions: sanitizedQuestions
@@ -382,7 +383,7 @@ app.post('/api/student/login', (req, res) => {
 
 // Periodic Progress Sync (Auto-saves answers & remaining time seamlessly)
 app.post('/api/student/sync', (req, res) => {
-  const { studentId, currentAnswers, currentIndex, remainingSeconds } = req.body;
+  const { studentId, currentAnswers, currentIndex, remainingSeconds, flaggedQuestions } = req.body;
 
   if (!studentId) return res.status(400).json({ success: false });
 
@@ -400,6 +401,7 @@ app.post('/api/student/sync', (req, res) => {
 
     if (student.status === 'IN_PROGRESS') {
       if (currentAnswers) student.currentAnswers = currentAnswers;
+      if (Array.isArray(flaggedQuestions)) student.flaggedQuestions = flaggedQuestions;
       if (currentIndex !== undefined) student.currentIndex = currentIndex;
       if (typeof remainingSeconds === 'number') student.remainingSeconds = remainingSeconds;
       student.lastActive = new Date().toISOString();
@@ -465,13 +467,14 @@ app.get('/api/student/status', (req, res) => {
     lockReason: student.lockReason || null,
     violations: student.violations || [],
     remainingSeconds,
+    flaggedQuestions: student.flaggedQuestions || [],
     currentIndex: student.currentIndex || 0
   });
 });
 
 // Disconnect Check Trigger (Distinguishes browser refresh vs window closed)
 function handleDisconnectCheck(req, res) {
-  const { studentId, reason, currentAnswers, currentIndex, remainingSeconds } = req.body;
+  const { studentId, reason, currentAnswers, currentIndex, remainingSeconds, flaggedQuestions } = req.body;
 
   if (!studentId) return res.status(400).json({ success: false });
 
@@ -480,6 +483,7 @@ function handleDisconnectCheck(req, res) {
 
   if (student && student.status === 'IN_PROGRESS') {
     if (currentAnswers) student.currentAnswers = currentAnswers;
+    if (Array.isArray(flaggedQuestions)) student.flaggedQuestions = flaggedQuestions;
     if (currentIndex !== undefined) student.currentIndex = currentIndex;
 
     if (typeof remainingSeconds === 'number' && remainingSeconds > 0) {
@@ -836,6 +840,7 @@ app.post('/api/teacher/students/reset-exam', checkTeacherAuth, (req, res) => {
   student.submittedAt = null;
   student.timeSpentSeconds = null;
   student.verificationHash = null;
+  student.flaggedQuestions = [];
   delete student.assignedQuestionIds;
   writeJSON(STUDENTS_FILE, students);
 

@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   session.remainingSeconds = remainingSeconds;
   const userAnswers = new Map(Object.entries(session.currentAnswers || {}));
-  const flaggedQuestions = new Set();
+  const flaggedQuestions = new Set(session.flaggedQuestions || []);
   let isSubmitting = false;
 
   // Track the furthest question reached / unlocked
@@ -115,6 +115,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           violationBadgeEl.className = statusData.violations.length > 0 ? 'badge badge-red' : 'badge badge-green';
         }
       }
+      if (Array.isArray(statusData.flaggedQuestions)) {
+        statusData.flaggedQuestions.forEach(id => flaggedQuestions.add(id));
+        session.flaggedQuestions = Array.from(flaggedQuestions);
+        sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
+      }
     }
   } catch (err) {
     console.warn('Initial session check warning:', err);
@@ -148,7 +153,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     getStateCallback: () => ({
       currentAnswers: Object.fromEntries(userAnswers),
       currentIndex,
-      remainingSeconds
+      remainingSeconds,
+      flaggedQuestions: Array.from(flaggedQuestions)
     }),
     onViolation: (v) => {
       if (violationBadgeEl) {
@@ -209,6 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         body: JSON.stringify({
           studentId: student.studentId,
           currentAnswers: Object.fromEntries(userAnswers),
+          flaggedQuestions: Array.from(flaggedQuestions),
           currentIndex,
           remainingSeconds
         })
@@ -222,6 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Update local session storage
       session.currentAnswers = Object.fromEntries(userAnswers);
+      session.flaggedQuestions = Array.from(flaggedQuestions);
       session.currentIndex = currentIndex;
       session.maxReachedIndex = maxReachedIndex;
       session.remainingSeconds = remainingSeconds;
@@ -414,7 +422,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         flaggedQuestions.add(q.id);
       }
+      session.flaggedQuestions = Array.from(flaggedQuestions);
+      sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
       renderCurrentQuestion();
+      updateMatrixState();
+      syncProgress();
     });
   }
 

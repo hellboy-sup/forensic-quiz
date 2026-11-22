@@ -9,6 +9,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.text({ type: ['text/*', 'application/octet-stream'] }));
+app.use((req, res, next) => {
+  if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+    try {
+      req.body = JSON.parse(req.body);
+    } catch (e) {}
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // File Paths
@@ -328,12 +337,14 @@ app.post('/api/student/login', (req, res) => {
 
   const now = Date.now();
   const sessionId = crypto.randomUUID();
+  const totalMs = totalSeconds * 1000;
 
   // If starting for the very first time
   let currentRemaining = totalSeconds;
   if (student.status === 'NOT_STARTED' || !student.startedAt) {
     student.status = 'IN_PROGRESS';
     student.startedAt = new Date(now).toISOString();
+    student.examEndTime = new Date(now + totalMs).toISOString();
     student.remainingSeconds = totalSeconds;
     student.currentAnswers = {};
     student.currentIndex = 0;
@@ -342,8 +353,11 @@ app.post('/api/student/login', (req, res) => {
     writeJSON(STUDENTS_FILE, students);
   } else {
     // Resuming existing in-progress session
-    const elapsedSeconds = Math.floor((now - new Date(student.startedAt).getTime()) / 1000);
-    const calculatedRemaining = Math.max(0, totalSeconds - elapsedSeconds);
+    if (!student.examEndTime && student.startedAt) {
+      student.examEndTime = new Date(new Date(student.startedAt).getTime() + totalMs).toISOString();
+    }
+    const endMs = student.examEndTime ? new Date(student.examEndTime).getTime() : (now + totalMs);
+    const calculatedRemaining = Math.max(0, Math.floor((endMs - now) / 1000));
     if (typeof student.remainingSeconds === 'number' && student.remainingSeconds > 0) {
       currentRemaining = Math.min(student.remainingSeconds, calculatedRemaining);
     } else {
@@ -372,6 +386,7 @@ app.post('/api/student/login', (req, res) => {
     examCode: config.examCode,
     durationMinutes,
     startedAt: student.startedAt,
+    examEndTime: student.examEndTime,
     remainingSeconds: currentRemaining,
     currentAnswers: student.currentAnswers || {},
     flaggedQuestions: student.flaggedQuestions || [],
@@ -448,16 +463,26 @@ app.get('/api/student/status', (req, res) => {
   if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
 
   const config = readJSON(CONFIG_FILE, {});
-  const totalSeconds = (Number(config.durationMinutes) || 60) * 60;
-  let remainingSeconds = student.remainingSeconds || totalSeconds;
+  const durationMinutes = Number(config.durationMinutes) || 60;
+  const totalSeconds = durationMinutes * 60;
+  const totalMs = totalSeconds * 1000;
+  const now = Date.now();
+
+  let remainingSeconds = typeof student.remainingSeconds === 'number' ? student.remainingSeconds : totalSeconds;
+
   if (student.startedAt) {
-    const elapsed = Math.floor((Date.now() - new Date(student.startedAt).getTime()) / 1000);
-    const calculated = Math.max(0, totalSeconds - elapsed);
+    if (!student.examEndTime) {
+      student.examEndTime = new Date(new Date(student.startedAt).getTime() + totalMs).toISOString();
+    }
+    const endMs = new Date(student.examEndTime).getTime();
+    const calculated = Math.max(0, Math.floor((endMs - now) / 1000));
     if (typeof student.remainingSeconds === 'number' && student.remainingSeconds > 0) {
       remainingSeconds = Math.min(student.remainingSeconds, calculated);
     } else {
       remainingSeconds = calculated;
     }
+    student.remainingSeconds = remainingSeconds;
+    writeJSON(STUDENTS_FILE, students);
   }
 
   res.json({
@@ -466,6 +491,8 @@ app.get('/api/student/status', (req, res) => {
     locked: student.status === 'LOCKED',
     lockReason: student.lockReason || null,
     violations: student.violations || [],
+    startedAt: student.startedAt,
+    examEndTime: student.examEndTime,
     remainingSeconds,
     flaggedQuestions: student.flaggedQuestions || [],
     currentIndex: student.currentIndex || 0
@@ -488,6 +515,8 @@ function handleDisconnectCheck(req, res) {
 
     if (typeof remainingSeconds === 'number' && remainingSeconds > 0) {
       student.remainingSeconds = remainingSeconds;
+    } else if (student.examEndTime) {
+      student.remainingSeconds = Math.max(0, Math.floor((new Date(student.examEndTime).getTime() - Date.now()) / 1000));
     } else if (student.startedAt) {
       const config = readJSON(CONFIG_FILE, {});
       const totalSeconds = (Number(config.durationMinutes) || 60) * 60;
@@ -837,6 +866,7 @@ app.post('/api/teacher/students/reset-exam', checkTeacherAuth, (req, res) => {
   student.percentage = null;
   student.isPassed = null;
   student.startedAt = null;
+  student.examEndTime = null;
   student.submittedAt = null;
   student.timeSpentSeconds = null;
   student.verificationHash = null;

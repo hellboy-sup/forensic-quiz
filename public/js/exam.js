@@ -4,7 +4,10 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const rawSession = sessionStorage.getItem('forensic_active_session');
+  let rawSession = sessionStorage.getItem('forensic_active_session');
+  if (!rawSession) {
+    rawSession = localStorage.getItem('forensic_active_session_backup');
+  }
   if (!rawSession) {
     alert('No active session found. Redirecting to student login.');
     window.location.href = '/index.html';
@@ -16,19 +19,53 @@ document.addEventListener('DOMContentLoaded', async () => {
   const student = session.student;
   const sessionId = session.sessionId;
 
-  // Restore State from Session / Server
-  let currentIndex = session.currentIndex || 0;
-  let remainingSeconds = typeof session.remainingSeconds === 'number'
-    ? session.remainingSeconds
-    : (session.durationMinutes * 60);
+  // DOM Elements
+  const examTitleEl = document.getElementById('examTitle');
+  const candidateNameEl = document.getElementById('candidateName');
+  const candidateIdEl = document.getElementById('candidateId');
+  const timerDisplayEl = document.getElementById('timerDigits');
+  const violationBadgeEl = document.getElementById('violationBadge');
 
-  // Cross-verify against session.startedAt to strictly prevent timer reset upon browser refresh
-  if (session.startedAt) {
-    const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
-    const calculated = Math.max(0, (session.durationMinutes * 60) - elapsed);
-    remainingSeconds = Math.min(remainingSeconds, calculated);
+  // Dedicated Synchronous Chronometer Display Renderer
+  function renderTimerDisplay(seconds) {
+    if (!timerDisplayEl) return;
+    const clamped = Math.max(0, Math.floor(seconds));
+    const mins = Math.floor(clamped / 60);
+    const secs = clamped % 60;
+    timerDisplayEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (clamped <= 120) {
+      timerDisplayEl.className = 'timer-digits danger';
+    } else if (clamped <= 300) {
+      timerDisplayEl.className = 'timer-digits warning';
+    } else {
+      timerDisplayEl.className = 'timer-digits';
+    }
+  }
+
+  // Restore State from Session / Server with Fixed Milestone End Time
+  let currentIndex = session.currentIndex || 0;
+  const durationTotalSeconds = (Number(session.durationMinutes) || 60) * 60;
+
+  // Derive fixed absolute end timestamp
+  let examEndTimeMs = session.examEndTimeMs || (session.examEndTime ? new Date(session.examEndTime).getTime() : null);
+  if (!examEndTimeMs && session.startedAt) {
+    examEndTimeMs = new Date(session.startedAt).getTime() + (durationTotalSeconds * 1000);
+  }
+  if (!examEndTimeMs) {
+    examEndTimeMs = Date.now() + (durationTotalSeconds * 1000);
+  }
+  session.examEndTimeMs = examEndTimeMs;
+
+  // Calculate remaining seconds directly against fixed end-time milestone
+  let remainingSeconds = Math.max(0, Math.floor((examEndTimeMs - Date.now()) / 1000));
+  if (typeof session.remainingSeconds === 'number' && session.remainingSeconds < remainingSeconds) {
+    remainingSeconds = session.remainingSeconds;
   }
   session.remainingSeconds = remainingSeconds;
+
+  // Render timer digits IMMEDIATELY synchronously (prevents any flicker or reset to 60:00)
+  renderTimerDisplay(remainingSeconds);
+
   const userAnswers = new Map(Object.entries(session.currentAnswers || {}));
   const flaggedQuestions = new Set(session.flaggedQuestions || []);
   let isSubmitting = false;
@@ -43,13 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   maxReachedIndex = Math.max(maxReachedIndex, currentIndex);
   session.maxReachedIndex = maxReachedIndex;
   sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
-
-  // DOM Elements
-  const examTitleEl = document.getElementById('examTitle');
-  const candidateNameEl = document.getElementById('candidateName');
-  const candidateIdEl = document.getElementById('candidateId');
-  const timerDisplayEl = document.getElementById('timerDigits');
-  const violationBadgeEl = document.getElementById('violationBadge');
+  localStorage.setItem('forensic_active_session_backup', JSON.stringify(session));
 
   const questionNumEl = document.getElementById('questionNum');
   const totalQuestionsEl = document.getElementById('totalQuestions');
@@ -107,7 +138,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       if (typeof statusData.remainingSeconds === 'number') {
-        remainingSeconds = statusData.remainingSeconds;
+        remainingSeconds = Math.min(remainingSeconds, statusData.remainingSeconds);
+        session.remainingSeconds = remainingSeconds;
+        if (statusData.examEndTime) {
+          session.examEndTime = statusData.examEndTime;
+          session.examEndTimeMs = new Date(statusData.examEndTime).getTime();
+        }
+        renderTimerDisplay(remainingSeconds);
+        sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
+        localStorage.setItem('forensic_active_session_backup', JSON.stringify(session));
       }
       if (Array.isArray(statusData.violations)) {
         if (violationBadgeEl) {
@@ -119,6 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusData.flaggedQuestions.forEach(id => flaggedQuestions.add(id));
         session.flaggedQuestions = Array.from(flaggedQuestions);
         sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
+        localStorage.setItem('forensic_active_session_backup', JSON.stringify(session));
       }
     }
   } catch (err) {
@@ -459,24 +499,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Timer Countdown
   const timerInterval = setInterval(() => {
-    remainingSeconds = Math.max(0, remainingSeconds - 1);
+    if (session.examEndTimeMs) {
+      const msLeft = session.examEndTimeMs - Date.now();
+      remainingSeconds = Math.max(0, Math.floor(msLeft / 1000));
+    } else {
+      remainingSeconds = Math.max(0, remainingSeconds - 1);
+    }
     session.remainingSeconds = remainingSeconds;
     sessionStorage.setItem('forensic_active_session', JSON.stringify(session));
+    localStorage.setItem('forensic_active_session_backup', JSON.stringify(session));
 
-    const minutes = Math.floor(remainingSeconds / 60);
-    const seconds = remainingSeconds % 60;
-    const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-    if (timerDisplayEl) {
-      timerDisplayEl.textContent = formatted;
-      if (remainingSeconds <= 120) {
-        timerDisplayEl.className = 'timer-digits danger';
-      } else if (remainingSeconds <= 300) {
-        timerDisplayEl.className = 'timer-digits warning';
-      } else {
-        timerDisplayEl.className = 'timer-digits';
-      }
-    }
+    renderTimerDisplay(remainingSeconds);
 
     if (remainingSeconds <= 0) {
       clearInterval(timerInterval);
@@ -509,6 +542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const result = await res.json();
       if (result.success) {
         sessionStorage.removeItem('forensic_active_session');
+        localStorage.removeItem('forensic_active_session_backup');
         sessionStorage.setItem('forensic_last_result', JSON.stringify(result.data));
         window.location.href = '/result.html';
       } else {

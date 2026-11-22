@@ -203,6 +203,7 @@
           if (data.success) {
             // Save active session & progress
             sessionStorage.setItem('forensic_active_session', JSON.stringify(data));
+            localStorage.setItem('forensic_active_session_backup', JSON.stringify(data));
             window.location.href = '/exam.html';
           } else {
             loginBtn.disabled = false;

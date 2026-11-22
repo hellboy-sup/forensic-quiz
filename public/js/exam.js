@@ -63,6 +63,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lockOverlay = document.getElementById('lockOverlay');
   const lockReasonText = document.getElementById('lockReasonText');
 
+  function showLockScreen(reason) {
+    if (typeof timerInterval !== 'undefined') clearInterval(timerInterval);
+    if (typeof syncInterval !== 'undefined') clearInterval(syncInterval);
+    if (shield) shield.stop();
+    if (lockOverlay) {
+      if (lockReasonText) lockReasonText.textContent = reason || 'Session locked by supervisor.';
+      lockOverlay.style.display = 'flex';
+    }
+  }
+
+  // Real-Time Server Session Check on Page Load / Refresh
+  try {
+    const statusRes = await fetch(`/api/student/status?studentId=${encodeURIComponent(student.studentId)}`);
+    const statusData = await statusRes.json();
+    if (statusData.success) {
+      if (statusData.locked || statusData.status === 'LOCKED') {
+        showLockScreen(statusData.lockReason || 'Page refreshed or browser session disconnected. Please inform your instructor to unlock your exam.');
+        return; // HALT: Student cannot proceed with exam while locked
+      }
+      if (statusData.status === 'SUBMITTED') {
+        alert('This assessment has already been completed and submitted.');
+        window.location.href = '/index.html';
+        return;
+      }
+      if (typeof statusData.remainingSeconds === 'number') {
+        remainingSeconds = statusData.remainingSeconds;
+      }
+    }
+  } catch (err) {
+    console.warn('Initial session check warning:', err);
+  }
+
   const securityWarningModal = document.getElementById('securityWarningModal');
   const warningIcon = document.getElementById('warningIcon');
   const warningTitleText = document.getElementById('warningTitleText');
@@ -142,18 +174,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   shield.setSession(student.studentId, sessionId, session.violationLimit || 3);
 
-  function showLockScreen(reason) {
-    if (lockOverlay) {
-      if (lockReasonText) lockReasonText.textContent = reason || 'Session locked by supervisor.';
-      lockOverlay.style.display = 'flex';
-    }
-  }
-
   // Periodic Server Progress Sync
   async function syncProgress() {
     if (isSubmitting) return;
     try {
-      await fetch('/api/student/sync', {
+      const res = await fetch('/api/student/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -163,6 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           remainingSeconds
         })
       });
+
+      const syncData = await res.json();
+      if (syncData.locked) {
+        showLockScreen(syncData.lockReason || 'Page refreshed or session locked by supervisor.');
+        return;
+      }
 
       // Update local session storage
       session.currentAnswers = Object.fromEntries(userAnswers);
@@ -422,8 +453,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionStorage.setItem('forensic_last_result', JSON.stringify(result.data));
         window.location.href = '/result.html';
       } else {
-        alert(`Error: ${result.message}`);
         isSubmitting = false;
+        if (result.status === 'LOCKED') {
+          showLockScreen(result.message || 'Session locked.');
+          return;
+        }
+        alert(`Error: ${result.message}`);
       }
     } catch (err) {
       console.error('Submission failed:', err);

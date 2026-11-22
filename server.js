@@ -389,15 +389,59 @@ app.post('/api/student/sync', (req, res) => {
   const students = readJSON(STUDENTS_FILE, []);
   const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
 
-  if (student && student.status === 'IN_PROGRESS') {
-    if (currentAnswers) student.currentAnswers = currentAnswers;
-    if (currentIndex !== undefined) student.currentIndex = currentIndex;
-    if (remainingSeconds !== undefined) student.remainingSeconds = remainingSeconds;
-    student.lastActive = new Date().toISOString();
-    writeJSON(STUDENTS_FILE, students);
+  if (student) {
+    if (student.status === 'LOCKED') {
+      return res.status(403).json({
+        success: false,
+        locked: true,
+        lockReason: student.lockReason || 'Page refreshed or browser session disconnected'
+      });
+    }
+
+    if (student.status === 'IN_PROGRESS') {
+      if (currentAnswers) student.currentAnswers = currentAnswers;
+      if (currentIndex !== undefined) student.currentIndex = currentIndex;
+      if (typeof remainingSeconds === 'number') student.remainingSeconds = remainingSeconds;
+      student.lastActive = new Date().toISOString();
+      writeJSON(STUDENTS_FILE, students);
+    }
   }
 
-  res.json({ success: true });
+  res.json({ success: true, locked: false });
+});
+
+// Real-Time Student Session State Verification (Checked on exam load)
+app.get('/api/student/status', (req, res) => {
+  const studentId = (req.query.studentId || '').trim();
+  if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
+
+  const students = readJSON(STUDENTS_FILE, []);
+  const student = students.find(s => s.studentId.toLowerCase() === studentId.toLowerCase());
+
+  if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+
+  const config = readJSON(CONFIG_FILE, {});
+  const totalSeconds = (Number(config.durationMinutes) || 60) * 60;
+  let remainingSeconds = student.remainingSeconds || totalSeconds;
+  if (student.startedAt) {
+    const elapsed = Math.floor((Date.now() - new Date(student.startedAt).getTime()) / 1000);
+    const calculated = Math.max(0, totalSeconds - elapsed);
+    if (typeof student.remainingSeconds === 'number' && student.remainingSeconds > 0) {
+      remainingSeconds = Math.min(student.remainingSeconds, calculated);
+    } else {
+      remainingSeconds = calculated;
+    }
+  }
+
+  res.json({
+    success: true,
+    status: student.status,
+    locked: student.status === 'LOCKED',
+    lockReason: student.lockReason || null,
+    violations: student.violations || [],
+    remainingSeconds,
+    currentIndex: student.currentIndex || 0
+  });
 });
 
 // Lock Session Trigger (Fires when page refreshes, closes, or candidate exits)
@@ -409,7 +453,7 @@ app.post('/api/student/lock', (req, res) => {
   const students = readJSON(STUDENTS_FILE, []);
   const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
 
-  if (student && student.status === 'IN_PROGRESS') {
+  if (student && (student.status === 'IN_PROGRESS' || student.status === 'LOCKED')) {
     student.status = 'LOCKED';
     student.lockReason = reason || 'Page refreshed or browser session disconnected';
     if (currentAnswers) student.currentAnswers = currentAnswers;
@@ -423,6 +467,13 @@ app.post('/api/student/lock', (req, res) => {
       const elapsed = Math.floor((Date.now() - new Date(student.startedAt).getTime()) / 1000);
       student.remainingSeconds = Math.max(0, totalSeconds - elapsed);
     }
+
+    if (!student.violations) student.violations = [];
+    student.violations.push({
+      type: 'BROWSER_REFRESH_OR_EXIT',
+      details: reason || 'Page refreshed or browser window closed',
+      timestamp: new Date().toISOString()
+    });
 
     student.lockedAt = new Date().toISOString();
     writeJSON(STUDENTS_FILE, students);
@@ -490,6 +541,15 @@ app.post('/api/student/submit', (req, res) => {
 
   if (student.status === 'SUBMITTED') {
     return res.status(400).json({ success: false, message: 'Assessment already submitted.' });
+  }
+
+  // Reject submission if student is currently locked
+  if (student.status === 'LOCKED') {
+    return res.status(403).json({
+      success: false,
+      status: 'LOCKED',
+      message: `Your examination is locked (${student.lockReason || 'Page refreshed or browser disconnected'}). You cannot submit until your instructor unlocks your account.`
+    });
   }
 
   const now = Date.now();
@@ -667,7 +727,7 @@ app.post('/api/teacher/students/unlock', checkTeacherAuth, (req, res) => {
   student.status = 'IN_PROGRESS';
   student.lockReason = null;
   student.lockedAt = null;
-  student.violations = [];
+  // Keep student.violations intact so refresh & security audit trail is never lost!
   writeJSON(STUDENTS_FILE, students);
 
   console.log(`[EXAM UNLOCKED] Teacher unlocked student ${student.name} (${student.studentId})`);

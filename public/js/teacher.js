@@ -259,7 +259,21 @@ document.addEventListener('DOMContentLoaded', () => {
         progressInfo = `<span style="color:#b91c1c; font-size:0.8rem;">${s.lockReason || 'Page refreshed'}</span>`;
       } else if (s.status === 'SUBMITTED') {
         statusBadge = `<span class="badge badge-blue">SUBMITTED</span>`;
-        progressInfo = `<strong style="font-size:0.95rem; color:#0369a1;">${s.score} / ${totalQuestions}</strong>`;
+        let auditWarnings = '';
+        const refreshCount = (s.violations || []).filter(v => (v.type || '').includes('REFRESH') || (v.type || '').includes('EXIT')).length;
+        const tabCount = (s.violations || []).filter(v => (v.type || '').includes('TAB') || (v.type || '').includes('BLUR')).length;
+        const devCount = (s.violations || []).filter(v => (v.type || '').includes('DEVTOOLS')).length;
+
+        const warningBadges = [];
+        if (refreshCount > 0) warningBadges.push(`⚠️ Refreshed (${refreshCount}x)`);
+        if (tabCount > 0) warningBadges.push(`👁️ Tab Switched (${tabCount}x)`);
+        if (devCount > 0) warningBadges.push(`🚨 DevTools (${devCount}x)`);
+
+        if (warningBadges.length > 0) {
+          auditWarnings = `<div style="font-size:0.75rem; color:#b91c1c; font-weight:700; margin-top:4px;">${warningBadges.join(' • ')}</div>`;
+        }
+
+        progressInfo = `<div><strong style="font-size:0.95rem; color:#0369a1;">${s.score} / ${totalQuestions}</strong>${auditWarnings}</div>`;
         timeLeftStr = 'Completed';
       } else {
         statusBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">NOT STARTED</span>`;

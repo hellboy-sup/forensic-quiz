@@ -778,7 +778,7 @@ app.post('/api/teacher/students/unlock', checkTeacherAuth, (req, res) => {
   student.status = 'IN_PROGRESS';
   student.lockReason = null;
   student.lockedAt = null;
-  // Keep student.violations intact so refresh & security audit trail is never lost!
+  student.violations = []; // Reset violations counter back to 0 upon unlock
   writeJSON(STUDENTS_FILE, students);
 
   console.log(`[EXAM UNLOCKED] Teacher unlocked student ${student.name} (${student.studentId})`);

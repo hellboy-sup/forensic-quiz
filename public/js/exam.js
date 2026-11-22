@@ -99,6 +99,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (typeof statusData.remainingSeconds === 'number') {
         remainingSeconds = statusData.remainingSeconds;
       }
+      if (Array.isArray(statusData.violations)) {
+        if (violationBadgeEl) {
+          violationBadgeEl.textContent = `VIOLATIONS: ${statusData.violations.length}/${session.violationLimit || 3}`;
+          violationBadgeEl.className = statusData.violations.length > 0 ? 'badge badge-red' : 'badge badge-green';
+        }
+      }
     }
   } catch (err) {
     console.warn('Initial session check warning:', err);

@@ -260,12 +260,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (s.status === 'SUBMITTED') {
         statusBadge = `<span class="badge badge-blue">SUBMITTED</span>`;
         let auditWarnings = '';
-        const refreshCount = (s.violations || []).filter(v => (v.type || '').includes('REFRESH') || (v.type || '').includes('EXIT')).length;
+        const closedCount = (s.violations || []).filter(v => (v.type || '').includes('CLOSED') || (v.type || '').includes('EXIT')).length;
         const tabCount = (s.violations || []).filter(v => (v.type || '').includes('TAB') || (v.type || '').includes('BLUR')).length;
         const devCount = (s.violations || []).filter(v => (v.type || '').includes('DEVTOOLS')).length;
 
         const warningBadges = [];
-        if (refreshCount > 0) warningBadges.push(`⚠️ Refreshed (${refreshCount}x)`);
+        if (closedCount > 0) warningBadges.push(`⚠️ Window Closed (${closedCount}x)`);
         if (tabCount > 0) warningBadges.push(`👁️ Tab Switched (${tabCount}x)`);
         if (devCount > 0) warningBadges.push(`🚨 DevTools (${devCount}x)`);
 

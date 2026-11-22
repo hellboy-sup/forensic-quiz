@@ -32,15 +32,17 @@ class ProctoringShield {
     this.isExamActive = false;
   }
 
-  // Detect and lock when student refreshes or exits
+  // Detect and lock when student closes the browser window or tab
   initRefreshLockHandler() {
-    const triggerLock = () => {
+    this.isPageUnloading = false;
+
+    const triggerDisconnectCheck = () => {
       if (!this.isExamActive || !this.studentId) return;
 
       const state = this.getStateCallback();
       const payload = JSON.stringify({
         studentId: this.studentId,
-        reason: 'Page refreshed or browser window closed',
+        reason: 'Browser window or tab was closed',
         currentAnswers: state.currentAnswers || {},
         currentIndex: state.currentIndex || 0,
         remainingSeconds: state.remainingSeconds || 0
@@ -48,9 +50,9 @@ class ProctoringShield {
 
       if (navigator.sendBeacon) {
         const blob = new Blob([payload], { type: 'application/json' });
-        navigator.sendBeacon('/api/student/lock', blob);
+        navigator.sendBeacon('/api/student/disconnect-check', blob);
       } else {
-        fetch('/api/student/lock', {
+        fetch('/api/student/disconnect-check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: payload,
@@ -60,11 +62,13 @@ class ProctoringShield {
     };
 
     window.addEventListener('beforeunload', () => {
-      if (this.isExamActive) triggerLock();
+      this.isPageUnloading = true;
+      if (this.isExamActive) triggerDisconnectCheck();
     });
 
     window.addEventListener('pagehide', () => {
-      if (this.isExamActive) triggerLock();
+      this.isPageUnloading = true;
+      if (this.isExamActive) triggerDisconnectCheck();
     });
   }
 
@@ -140,16 +144,16 @@ class ProctoringShield {
 
     // 3. Tab Switching Monitor
     document.addEventListener('visibilitychange', () => {
-      if (!this.isExamActive) return;
+      if (!this.isExamActive || this.isPageUnloading) return;
       if (document.visibilityState === 'hidden') {
         this.triggerViolation('TAB_SWITCH', 'Application focus lost: Student switched tabs or minimized.');
       }
     });
 
     window.addEventListener('blur', () => {
-      if (!this.isExamActive) return;
+      if (!this.isExamActive || this.isPageUnloading) return;
       setTimeout(() => {
-        if (!document.hasFocus() && this.isExamActive) {
+        if (!document.hasFocus() && this.isExamActive && !this.isPageUnloading) {
           this.triggerViolation('WINDOW_BLUR', 'Window focus lost.');
         }
       }, 350);

@@ -73,13 +73,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Real-Time Server Session Check on Page Load / Refresh
+  // Confirm reload immediately so server cancels any disconnect timer if student simply refreshed
+  try {
+    fetch('/api/student/confirm-reload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: student.studentId })
+    });
+  } catch (e) {}
+
+  // Real-Time Server Session Check on Page Load
   try {
     const statusRes = await fetch(`/api/student/status?studentId=${encodeURIComponent(student.studentId)}`);
     const statusData = await statusRes.json();
     if (statusData.success) {
       if (statusData.locked || statusData.status === 'LOCKED') {
-        showLockScreen(statusData.lockReason || 'Page refreshed or browser session disconnected. Please inform your instructor to unlock your exam.');
+        showLockScreen(statusData.lockReason || 'Browser window or tab was closed. Please inform your instructor to unlock your exam.');
         return; // HALT: Student cannot proceed with exam while locked
       }
       if (statusData.status === 'SUBMITTED') {

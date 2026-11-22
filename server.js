@@ -411,9 +411,34 @@ app.post('/api/student/sync', (req, res) => {
 });
 
 // Real-Time Student Session State Verification (Checked on exam load)
+const pendingDisconnects = new Map(); // studentId -> timeout
+
+app.post('/api/student/confirm-reload', (req, res) => {
+  const { studentId } = req.body;
+  if (studentId) {
+    const cleanId = studentId.trim();
+    for (const [key, timer] of pendingDisconnects.entries()) {
+      if (key.toLowerCase() === cleanId.toLowerCase()) {
+        clearTimeout(timer);
+        pendingDisconnects.delete(key);
+        console.log(`[EXAM RELOAD] Student ${cleanId} reloaded page. Grace timer cancelled, session active.`);
+      }
+    }
+  }
+  res.json({ success: true, reloaded: true });
+});
+
 app.get('/api/student/status', (req, res) => {
   const studentId = (req.query.studentId || '').trim();
   if (!studentId) return res.status(400).json({ success: false, message: 'Student ID required.' });
+
+  // Cancel any pending disconnect timer since client is actively communicating
+  for (const [key, timer] of pendingDisconnects.entries()) {
+    if (key.toLowerCase() === studentId.toLowerCase()) {
+      clearTimeout(timer);
+      pendingDisconnects.delete(key);
+    }
+  }
 
   const students = readJSON(STUDENTS_FILE, []);
   const student = students.find(s => s.studentId.toLowerCase() === studentId.toLowerCase());
@@ -444,8 +469,8 @@ app.get('/api/student/status', (req, res) => {
   });
 });
 
-// Lock Session Trigger (Fires when page refreshes, closes, or candidate exits)
-app.post('/api/student/lock', (req, res) => {
+// Disconnect Check Trigger (Distinguishes browser refresh vs window closed)
+function handleDisconnectCheck(req, res) {
   const { studentId, reason, currentAnswers, currentIndex, remainingSeconds } = req.body;
 
   if (!studentId) return res.status(400).json({ success: false });
@@ -453,9 +478,7 @@ app.post('/api/student/lock', (req, res) => {
   const students = readJSON(STUDENTS_FILE, []);
   const student = students.find(s => s.studentId.toLowerCase() === studentId.trim().toLowerCase());
 
-  if (student && (student.status === 'IN_PROGRESS' || student.status === 'LOCKED')) {
-    student.status = 'LOCKED';
-    student.lockReason = reason || 'Page refreshed or browser session disconnected';
+  if (student && student.status === 'IN_PROGRESS') {
     if (currentAnswers) student.currentAnswers = currentAnswers;
     if (currentIndex !== undefined) student.currentIndex = currentIndex;
 
@@ -468,20 +491,48 @@ app.post('/api/student/lock', (req, res) => {
       student.remainingSeconds = Math.max(0, totalSeconds - elapsed);
     }
 
-    if (!student.violations) student.violations = [];
-    student.violations.push({
-      type: 'BROWSER_REFRESH_OR_EXIT',
-      details: reason || 'Page refreshed or browser window closed',
-      timestamp: new Date().toISOString()
-    });
-
-    student.lockedAt = new Date().toISOString();
+    student.lastActive = new Date().toISOString();
     writeJSON(STUDENTS_FILE, students);
-    console.log(`[EXAM LOCK] Student ${student.name} (${student.studentId}) locked: ${student.lockReason} | Remaining: ${student.remainingSeconds}s`);
+
+    // Cancel existing timer if any
+    const cleanId = student.studentId.toLowerCase();
+    for (const [key, timer] of pendingDisconnects.entries()) {
+      if (key.toLowerCase() === cleanId) {
+        clearTimeout(timer);
+        pendingDisconnects.delete(key);
+      }
+    }
+
+    // 6-Second Grace Window:
+    // If student refreshes, exam.html reconnects within ~1s and cancels this timer.
+    // If student closed the tab/window, no reload occurs: lock candidate after 6s!
+    const timer = setTimeout(() => {
+      const currentList = readJSON(STUDENTS_FILE, []);
+      const target = currentList.find(s => s.studentId.toLowerCase() === cleanId);
+      if (target && target.status === 'IN_PROGRESS') {
+        target.status = 'LOCKED';
+        target.lockReason = 'Browser window or tab was closed';
+        target.lockedAt = new Date().toISOString();
+        if (!target.violations) target.violations = [];
+        target.violations.push({
+          type: 'BROWSER_WINDOW_CLOSED',
+          details: 'Candidate closed the examination browser window or tab.',
+          timestamp: new Date().toISOString()
+        });
+        writeJSON(STUDENTS_FILE, currentList);
+        console.log(`[EXAM LOCKOUT] Student ${target.name} (${target.studentId}) LOCKED: Browser window was closed (grace period expired).`);
+      }
+      pendingDisconnects.delete(student.studentId);
+    }, 6000);
+
+    pendingDisconnects.set(student.studentId, timer);
   }
 
-  res.json({ success: true, locked: true });
-});
+  res.json({ success: true, pending: true });
+}
+
+app.post('/api/student/disconnect-check', handleDisconnectCheck);
+app.post('/api/student/lock', handleDisconnectCheck);
 
 // Security Violation Logged
 app.post('/api/student/violation', (req, res) => {
